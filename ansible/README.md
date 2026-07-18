@@ -216,7 +216,104 @@ If there is no DNS server and you prefer the friendly URL, add the `Client hosts
 
 This is optional. The IP address URL works without changing the browser computer's hosts file.
 
-## 7. Activate the AAP subscription
+## 7. Check that AAP is running
+
+AAP uses **rootless containers**. This means the containers belong to the dedicated `aap` Linux account, not to `root` and not to the account you used for SSH.
+
+This command checks root's Podman storage and will normally show no AAP containers:
+
+```bash
+sudo podman ps
+```
+
+That empty result does **not** mean AAP is stopped.
+
+Switch to the `aap` service account:
+
+```bash
+sudo -iu aap
+```
+
+Your command prompt changes because you are now operating as `aap`. List the AAP containers:
+
+```bash
+podman ps
+```
+
+You should see containers with names such as:
+
+```text
+automation-gateway
+automation-gateway-proxy
+automation-controller-web
+automation-controller-task
+automation-hub-api
+automation-eda-api
+automation-metrics-web
+postgresql
+redis-tcp
+```
+
+Check for stopped containers as well as running containers:
+
+```bash
+podman ps -a
+```
+
+List running AAP services:
+
+```bash
+systemctl --user --type=service --state=running
+```
+
+Check whether any AAP service failed:
+
+```bash
+systemctl --user --failed
+```
+
+A healthy system reports `0 loaded units listed` in the failed-unit output.
+
+When finished, return to your normal SSH account:
+
+```bash
+exit
+```
+
+From your normal account, confirm that HTTPS is listening:
+
+```bash
+sudo ss -lntp | grep ':443'
+```
+
+Test the web interface. Replace `SERVER_IP` with the server's address:
+
+```bash
+curl -kI https://SERVER_IP
+```
+
+An HTTP response such as `200 OK` confirms that the web server answered. The `-k` option is needed because the initial AAP certificate is signed by the installation's private certificate authority.
+
+To inspect one service in detail:
+
+```bash
+sudo -iu aap systemctl --user status automation-gateway-proxy.service
+```
+
+To display its latest log messages:
+
+```bash
+sudo -iu aap journalctl --user -u automation-gateway-proxy.service -n 100 --no-pager
+```
+
+The important distinction is:
+
+```text
+sudo podman ps          checks root's containers and usually appears empty
+sudo -iu aap podman ps  checks the AAP rootless containers
+```
+
+## 8. Activate the AAP subscription
 
 After logging in, follow the web interface prompt to attach an available Red Hat subscription or upload a subscription manifest. The exact choice depends on how your organization manages Red Hat subscriptions.
 
