@@ -24,8 +24,10 @@ The installer:
 - The eleven authorized local PNETLab files listed in [`packages/PLACE_FILES_HERE.txt`](packages/PLACE_FILES_HERE.txt)
 
 The package archives are intentionally excluded from Git because several
-exceed GitHub's normal per-file size limit. Obtain the PNETLab packages from an
-authorized source and retain the exact filenames.
+exceed GitHub's normal per-file size limit. Download the required PNETLab files
+from [LabHub's PNETLab focal package directory](https://drive.labhub.eu.org/0:/pnetlab/upgrades_pnetlab/focal/),
+place all eleven files in the local `packages/` directory, and retain their
+exact filenames.
 
 ## Directory layout
 
