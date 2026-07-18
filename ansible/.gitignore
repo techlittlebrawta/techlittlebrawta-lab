@@ -1,0 +1,7 @@
+ansible-automation-platform-containerized-setup-bundle-*.tar.gz
+inventory*
+*.log
+*login*.txt
+*.pem
+*.key
+*.crt
