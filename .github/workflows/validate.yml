@@ -1,0 +1,59 @@
+---
+name: Validate lab content
+
+"on":
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  python-and-yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            .github/requirements-validation.txt
+            pnetlab/api-tools/requirements.txt
+            splunk/add-ons/TA-veracode/requirements.txt
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r pnetlab/api-tools/requirements.txt
+          python -m pip install -r splunk/add-ons/TA-veracode/requirements.txt
+          python -m pip install -r .github/requirements-validation.txt
+
+      - name: Run PNETLab unit tests
+        run: python -m unittest discover -s pnetlab/api-tools/tests -v
+
+      - name: Run Veracode add-on unit tests
+        run: python -m unittest discover -s splunk/add-ons/TA-veracode/tests -v
+
+      - name: Compile Python
+        run: |
+          python -m py_compile pnetlab/api-tools/pnetlab_client.py
+          python -m py_compile pnetlab/api-tools/pnetlab_cli.py
+          python -m py_compile splunk/add-ons/TA-veracode/bin/veracode.py
+
+      - name: Lint Python
+        run: >-
+          ruff check
+          pnetlab/api-tools
+          splunk/add-ons/TA-veracode/bin
+          splunk/add-ons/TA-veracode/tests
+
+      - name: Lint migrated YAML
+        run: >-
+          yamllint
+          nmap/scan-subnet.yml

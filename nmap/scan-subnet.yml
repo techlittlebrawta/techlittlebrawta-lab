@@ -1,0 +1,39 @@
+---
+- name: Discover responsive hosts in an approved network range
+  hosts: nmap_scanners
+  gather_facts: false
+  become: true
+
+  vars:
+    nmap_target: "192.168.1.0/24"
+
+  pre_tasks:
+    - name: Validate the requested Nmap target
+      ansible.builtin.assert:
+        that:
+          - nmap_target is string
+          - nmap_target | length > 0
+          - not nmap_target.startswith('-')
+          - nmap_target is not regex('[\\s;&|`$<>]')
+        fail_msg: >-
+          nmap_target must be one authorized IPv4/IPv6 address, hostname, or
+          CIDR without command options or shell metacharacters.
+
+  tasks:
+    - name: Ensure Nmap is installed
+      ansible.builtin.package:
+        name: nmap
+        state: present
+
+    - name: Discover responsive hosts without a port scan
+      ansible.builtin.command:
+        argv:
+          - nmap
+          - -sn
+          - "{{ nmap_target }}"
+      register: nmap_discovery
+      changed_when: false
+
+    - name: Show Nmap discovery output
+      ansible.builtin.debug:
+        var: nmap_discovery.stdout_lines

@@ -1,0 +1,7 @@
+ansible-automation-platform-setup-bundle-*.tar.gz
+inventory
+inventory.ini
+*.log
+*.pem
+*.key
+*.crt

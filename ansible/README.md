@@ -367,3 +367,11 @@ Do not repeatedly rerun the script after a partial installation without first un
 - `/root/aap-login.txt` contains the AAP administrator password.
 - The generated inventory under `/home/aap/aap-install/` contains database passwords.
 - Do not commit bundles, inventories, credentials, logs, certificates, or private keys to Git.
+
+## Legacy bundle examples
+
+The reviewed AAP 2.4 standalone Controller and Private Automation Hub examples
+migrated from the former `securitylab` repository are under
+[`legacy/ansible-automation-platform-2.4-bundle/`](legacy/ansible-automation-platform-2.4-bundle/).
+They are retained for compatibility work; use the current AAP 2.7 containerized
+installer above for new labs.
