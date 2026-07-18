@@ -15,7 +15,7 @@ The playbook:
 
 It does not accept the target host or subnet as variables. Run it unchanged only
 when those exact values describe an authorized lab. For another environment,
-copy the playbook outside this archive and edit the working copy.
+copy the playbook outside this folder and edit the working copy.
 
 ## Requirements
 

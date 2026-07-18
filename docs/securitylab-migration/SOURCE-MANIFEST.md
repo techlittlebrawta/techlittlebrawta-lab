@@ -1,6 +1,6 @@
 # securitylab source manifest
 
-This manifest records the final source state used for the archive import.
+This manifest records the final source state used for the migration.
 
 ## Repository state
 
@@ -39,7 +39,7 @@ migration cleanup:
 The Git blob IDs below must match the imported files. Repeated IDs represent
 the original one-byte placeholder files.
 
-| Original and archived path | Git blob ID |
+| Original path | Git blob ID |
 | --- | --- |
 | `README.md` | `f00b4c6eac7054557959db9873bd8f3128f71f7f` |
 | `nmap/nmap_scan_subnet.yml` | `9e0d47665ac65abef052ba5db8de25c30ef9395e` |
@@ -63,6 +63,6 @@ the original one-byte placeholder files.
 ## Excluded Ansible files
 
 The four files beneath source `ansible/` were intentionally not retained in the
-archive working tree because the destination's current Ansible implementation
+destination working tree because the destination's current Ansible implementation
 supersedes them. Their history remains reachable through the imported source
 history.
