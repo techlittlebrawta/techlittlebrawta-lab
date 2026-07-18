@@ -6,12 +6,6 @@
 > required. Do not run it in production or on a system you do not own and
 > administer.
 
-## Preservation notice
-
-[`vmware_esxi_license.yml`](vmware_esxi_license.yml) is copied byte-for-byte from
-`techlittlebrawta/securitylab`. Its tasks, command module usage, paths, and
-service restart have not been corrected, modernized, or otherwise changed.
-
 The playbook performs these original operations on every host in the `esxi`
 inventory group:
 
