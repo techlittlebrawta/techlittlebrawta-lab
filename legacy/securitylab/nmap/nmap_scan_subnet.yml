@@ -1,0 +1,22 @@
+---
+- name: Scan subnet for active hosts
+  hosts: LAB-AAP-CONT-01
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Ensure nmap is installed
+      ansible.builtin.yum:  # Use 'dnf' if it's preferred and properly configured
+        name: nmap
+        state: present
+
+    - name: Scan the subnet for live hosts
+      ansible.builtin.shell: "nmap -sn 192.168.1.0/24"
+      register: nmap_output
+
+    - name: Show nmap raw output
+      ansible.builtin.debug:
+        var: nmap_output.stdout
+
+    - name: Extract live hosts from nmap output
+      ansible.builtin.debug:
+        var: nmap_output.stdout_lines
