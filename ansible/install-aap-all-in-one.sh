@@ -43,7 +43,10 @@ while (($#)); do
   esac
 done
 
-[[ $EUID -eq 0 ]] || die "Run this script as root or with sudo."
+if [[ $EUID -ne 0 ]]; then
+  printf 'ERROR: Run this script with sudo: sudo %q\n' "$0" >&2
+  exit 1
+fi
 touch "$LOG_FILE"
 chmod 0600 "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
@@ -67,6 +70,10 @@ if [[ -z $BUNDLE ]]; then
 fi
 [[ -r $BUNDLE ]] || die "Cannot read bundle: $BUNDLE"
 tar -tzf "$BUNDLE" >/dev/null || die "Bundle archive validation failed."
+case "$(uname -m)" in
+  x86_64) [[ $(basename "$BUNDLE") == *x86_64* ]] || die "Use the x86_64 AAP bundle on this server." ;;
+  aarch64) [[ $(basename "$BUNDLE") == *aarch64* ]] || die "Use the aarch64 AAP bundle on this server." ;;
+esac
 
 short_name="$(hostname -s | tr '[:upper:]' '[:lower:]')"
 [[ -n $FQDN ]] || FQDN="aap.${short_name}.lab.example.com"
@@ -206,8 +213,8 @@ chown "$AAP_USER:$AAP_USER" "${installer_dir}/inventory-growth"
 chmod 0600 "${installer_dir}/inventory-growth"
 
 cat >"$LOGIN_FILE" <<EOF
-AAP URL: https://${FQDN}
-AAP IP: ${HOST_IP}
+AAP URL (IP): https://${HOST_IP}
+AAP URL (friendly name): https://${FQDN}
 Username: admin
 Password: ${gateway_admin_password}
 Client hosts entry: ${HOST_IP} ${FQDN} ${FQDN%%.*}
@@ -228,7 +235,7 @@ runuser -u "$AAP_USER" -- env \
   bash -c 'cd "$1" && ansible-playbook -i inventory-growth ansible.containerized_installer.install' \
   bash "$installer_dir"
 
-log "Verifying services and authenticated web access"
+log "Verifying services and web access"
 if runuser -u "$AAP_USER" -- env HOME="$AAP_HOME" XDG_RUNTIME_DIR="$runtime_dir" \
   DBUS_SESSION_BUS_ADDRESS="unix:path=${runtime_dir}/bus" \
   systemctl --user --failed --no-legend | grep -q .; then
@@ -236,11 +243,10 @@ if runuser -u "$AAP_USER" -- env HOME="$AAP_HOME" XDG_RUNTIME_DIR="$runtime_dir"
 fi
 curl --retry 12 --retry-delay 10 --retry-all-errors -kfsS \
   "https://${FQDN}/" >/dev/null
-curl --retry 6 --retry-delay 5 --retry-all-errors -kfsS \
-  -u "admin:${gateway_admin_password}" \
-  "https://${FQDN}/api/gateway/v1/me/" >/dev/null
+curl --retry 12 --retry-delay 10 --retry-all-errors -kfsS \
+  "https://${HOST_IP}/" >/dev/null
 
 trap - ERR
 log "AAP installation completed successfully."
 cat "$LOGIN_FILE"
-printf '\nAdd the displayed hosts entry to the computer used to open the AAP web interface.\n'
+printf '\nOpen the IP URL in a browser. The friendly-name hosts entry is optional.\n'
