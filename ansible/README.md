@@ -1,23 +1,86 @@
-# AAP 2.7 all-in-one installer for RHEL
+# Install AAP 2.7 all-in-one on a fresh RHEL server
 
-`install-aap-all-in-one.sh` prepares a fresh, registered RHEL host and installs the Red Hat Ansible Automation Platform 2.7 container growth topology. It deploys Gateway, Controller, Private Automation Hub, Event-Driven Ansible, Metrics, PostgreSQL, Redis, and Receptor as rootless Podman services.
+This folder contains a guided installer for a **new** Red Hat Enterprise Linux server. It installs the Red Hat Ansible Automation Platform (AAP) 2.7 **container growth topology**, sometimes called an all-in-one installation.
 
-## Requirements
+The finished server includes:
 
-- Fresh RHEL 9.6+ or RHEL 10 host
-- Valid RHEL and AAP subscriptions
-- 4 or more CPUs
-- 16 GiB RAM minimum; 32 GiB is recommended for a bundled growth deployment
-- At least 80 GiB available on the local `/home` filesystem
-- Internet access to RHEL BaseOS and AppStream repositories
-- One AAP 2.7 **containerized setup bundle** (`.tar.gz`)
-- Root or sudo access
+- Automation Gateway and the AAP web interface
+- Automation Controller
+- Private Automation Hub
+- Event-Driven Ansible
+- Automation Metrics
+- PostgreSQL, Redis, and Receptor
 
-The script is for a new installation only. It refuses to run if it detects an existing AAP deployment.
+You do not need to know Ansible or Podman to run the script. Read this page from top to bottom before starting.
 
-## Copy the folder to the RHEL server
+## Important limitations
 
-Clone the repository directly on the new RHEL server:
+- Use this only on a fresh server that does not already run AAP.
+- This creates a single-server lab deployment. It is not a highly available production design.
+- The script installs AAP but does not provide a Red Hat subscription manifest or organization-specific TLS certificate.
+- Keep the downloaded Red Hat installer bundle private. Do not upload it to GitHub.
+
+## 1. Check the RHEL server
+
+The server must have:
+
+| Requirement | Minimum |
+| --- | --- |
+| Operating system | RHEL 9.6 or newer RHEL 9 release, or RHEL 10 |
+| CPU | 4 virtual CPUs |
+| Memory | 16 GiB; 20 GiB or more is recommended |
+| Free local storage | 80 GiB available under `/home` |
+| Architecture | `x86_64` or `aarch64` |
+| Network | Access to enabled RHEL BaseOS and AppStream repositories |
+| Account | Any account that can run `sudo` |
+
+Connect to the server with SSH. Replace `YOUR_RHEL_USER` and `SERVER_IP` with real values:
+
+```bash
+ssh YOUR_RHEL_USER@SERVER_IP
+```
+
+Run these checks on the RHEL server:
+
+```bash
+cat /etc/redhat-release
+uname -m
+nproc
+free -h
+df -h /home
+sudo subscription-manager status
+sudo dnf repolist --enabled
+```
+
+Confirm that BaseOS and AppStream appear in the enabled repository list.
+
+If the server is not registered, register it using the method provided by your Red Hat administrator. One interactive method is:
+
+```bash
+sudo subscription-manager register
+```
+
+Do not put Red Hat passwords or activation keys in this repository or in the installer script.
+
+## 2. Get the Red Hat AAP installer bundle
+
+Sign in to the [Red Hat Hybrid Cloud Console downloads page](https://console.redhat.com/ansible/automation-hub/repo/published/ansible-automation-platform-setup-bundle/distributions/) using an account entitled to AAP.
+
+Download the AAP 2.7 **containerized setup bundle** that matches the server architecture. The filename resembles:
+
+```text
+ansible-automation-platform-containerized-setup-bundle-2.7-2-x86_64.tar.gz
+```
+
+Your release number might be newer than the example. Do not extract the bundle yourself.
+
+## 3. Copy this `ansible` folder to the server
+
+Choose one method.
+
+### Method A: clone the repository on the RHEL server
+
+Run on the RHEL server:
 
 ```bash
 sudo dnf install -y git
@@ -25,83 +88,185 @@ git clone --depth 1 https://github.com/techlittlebrawta/techlittlebrawta-lab.git
 cd techlittlebrawta-lab/ansible
 ```
 
-Alternatively, copy only this folder from another workstation:
+### Method B: download without Git
+
+Run on the RHEL server:
 
 ```bash
-scp -r ansible root@192.168.1.251:/root/
-ssh root@192.168.1.251
-cd /root/ansible
+curl -L https://github.com/techlittlebrawta/techlittlebrawta-lab/archive/refs/heads/main.tar.gz -o /tmp/techlittlebrawta-lab.tar.gz
+tar -xzf /tmp/techlittlebrawta-lab.tar.gz -C /tmp
+cp -R /tmp/techlittlebrawta-lab-main/ansible "$HOME/ansible"
+cd "$HOME/ansible"
 ```
 
-Replace `192.168.1.251` with the address of the new RHEL server.
+### Method C: copy a folder from your workstation
 
-## Add the installer bundle
-
-Download the AAP 2.7 containerized setup bundle from the Red Hat Customer Portal. Copy it into the same directory as the script:
+First download or clone this repository on your Windows, macOS, or Linux workstation. Then run from a terminal on that workstation:
 
 ```bash
-scp ansible-automation-platform-containerized-setup-bundle-2.7-*-x86_64.tar.gz \
-  root@192.168.1.251:/root/ansible/
+scp -r ansible YOUR_RHEL_USER@SERVER_IP:~/
 ```
 
-The directory should resemble:
+Connect to the server and enter the folder:
+
+```bash
+ssh YOUR_RHEL_USER@SERVER_IP
+cd ~/ansible
+```
+
+## 4. Put the Red Hat bundle beside the script
+
+If the bundle is on your workstation, copy it to the server. Run this on the workstation, replacing every uppercase placeholder:
+
+```bash
+scp /PATH/TO/ansible-automation-platform-containerized-setup-bundle-2.7-*-x86_64.tar.gz \
+  YOUR_RHEL_USER@SERVER_IP:~/ansible/
+```
+
+For an ARM server, the bundle filename will use its matching architecture instead of `x86_64`.
+
+Back on the RHEL server, verify the folder:
+
+```bash
+cd ~/ansible
+ls -lh
+```
+
+It should contain:
 
 ```text
-ansible/
-├── README.md
-├── install-aap-all-in-one.sh
-└── ansible-automation-platform-containerized-setup-bundle-2.7-2-x86_64.tar.gz
+README.md
+install-aap-all-in-one.sh
+ansible-automation-platform-containerized-setup-bundle-2.7-...tar.gz
 ```
 
-## Install
+## 5. Run the installer
+
+Make the script executable and start it:
 
 ```bash
-cd /root/ansible
+cd ~/ansible
 chmod +x install-aap-all-in-one.sh
 sudo ./install-aap-all-in-one.sh
 ```
 
-The defaults automatically select the first non-loopback IPv4 address and use a DNS-less lab hostname such as `aap.servername.lab.example.com`. Override them when needed:
+The script shows a plan and asks for confirmation before making changes. It automatically detects the server's primary IPv4 address.
+
+If the server has more than one network interface, specify the address that your workstation uses to reach it:
+
+```bash
+sudo ./install-aap-all-in-one.sh --ip SERVER_IP
+```
+
+You may also choose a friendly hostname. This does not require a DNS server because IP-based login remains available:
 
 ```bash
 sudo ./install-aap-all-in-one.sh \
-  --fqdn aap01.lab.example.com \
-  --ip 192.168.1.251
+  --ip SERVER_IP \
+  --fqdn aap01.lab.example.com
 ```
 
-For unattended execution after reviewing the script and parameters:
+Use `--yes` only after reviewing the plan when running non-interactively:
 
 ```bash
-sudo ./install-aap-all-in-one.sh \
-  --fqdn aap01.lab.example.com \
-  --ip 192.168.1.251 \
-  --yes
+sudo ./install-aap-all-in-one.sh --ip SERVER_IP --yes
 ```
 
-The installation commonly takes 30–60 minutes. Progress is written to:
+Installation usually takes 30–60 minutes. Keep the terminal open. The complete log is stored at:
 
 ```text
 /var/log/aap-all-in-one-install.log
 ```
 
-## Log in
+## 6. Log in to AAP
 
-After successful installation, the script prints the URL and generated admin password. A root-readable copy is stored at:
+When installation succeeds, the script prints:
+
+- the IP address URL;
+- an optional friendly hostname URL;
+- the username `admin`;
+- a randomly generated password.
+
+The simplest login method is the server IP address:
 
 ```text
-/root/aap-login.txt
+https://SERVER_IP
 ```
 
-For a lab without DNS, add the `Client hosts entry` from that file to the workstation used to browse AAP:
+For example, if your server address is `10.20.30.40`, open:
 
-- Linux/macOS: `/etc/hosts`
+```text
+https://10.20.30.40
+```
+
+The generated certificate includes both the IP address and friendly hostname. Because the certificate authority is private to this installation, your browser will probably show a security warning the first time. Confirm that you are connecting to the expected server before accepting the warning.
+
+Retrieve the login details later by running this on the RHEL server:
+
+```bash
+sudo cat /root/aap-login.txt
+```
+
+### Optional friendly hostname access
+
+If there is no DNS server and you prefer the friendly URL, add the `Client hosts entry` shown in `/root/aap-login.txt` to the computer running the browser:
+
+- Linux or macOS: `/etc/hosts`
 - Windows: `C:\Windows\System32\drivers\etc\hosts`
 
-Then open the displayed HTTPS URL and log in as `admin`. The installer generates a private certificate authority, so the browser may initially show a certificate trust warning.
+This is optional. The IP address URL works without changing the browser computer's hosts file.
 
-## Security and operational notes
+## 7. Activate the AAP subscription
 
-- Generated inventory and credential files are mode `0600`.
-- The dedicated `aap` account receives passwordless sudo because the supported containerized installer needs privilege escalation.
-- Do not commit the Red Hat installer bundle, generated inventory, passwords, logs, or certificates to Git.
-- Attach the AAP subscription or manifest in the web interface after installation if it was not supplied during deployment.
+After logging in, follow the web interface prompt to attach an available Red Hat subscription or upload a subscription manifest. The exact choice depends on how your organization manages Red Hat subscriptions.
+
+## What the script changes
+
+The script:
+
+1. Checks RHEL version, architecture, CPU, memory, local storage, registration, repositories, and bundle integrity.
+2. Installs supported RHEL packages including Ansible Core and Podman.
+3. Assigns a local AAP hostname and adds a matching entry to the server's `/etc/hosts` file.
+4. Creates a dedicated `aap` service account with installer-required sudo access.
+5. Extracts the bundle under `/home/aap` so container data uses the large `/home` filesystem.
+6. Generates unique database and administrator passwords.
+7. Opens the firewall ports configured by the supported Red Hat installer.
+8. Runs the Red Hat AAP containerized installer.
+9. Confirms that services are running and checks the HTTPS web interface using both the IP address and configured hostname.
+
+## Troubleshooting
+
+If the script stops, read the final error and inspect the log:
+
+```bash
+sudo less /var/log/aap-all-in-one-install.log
+```
+
+Check available storage:
+
+```bash
+df -h /home
+```
+
+Check the rootless AAP services:
+
+```bash
+sudo -iu aap
+systemctl --user --failed
+podman ps -a
+exit
+```
+
+Check the web port:
+
+```bash
+sudo ss -lntp | grep ':443'
+```
+
+Do not repeatedly rerun the script after a partial installation without first understanding the failure. The script deliberately stops when it detects existing AAP data so that it does not replace previously generated database credentials.
+
+## Protect these files
+
+- `/root/aap-login.txt` contains the AAP administrator password.
+- The generated inventory under `/home/aap/aap-install/` contains database passwords.
+- Do not commit bundles, inventories, credentials, logs, certificates, or private keys to Git.
