@@ -11,8 +11,3 @@ disposable training lab.
 - Comply with the VMware/Broadcom license terms that apply to the environment.
 - Use the vendor-supported licensing interface and a valid license for systems
   that are not disposable lab hosts.
-
-The [`esxi/`](esxi/) folder contains the preserved lab playbook and its operating
-notes. The playbook is intentionally retained byte-for-byte from the original
-`techlittlebrawta/securitylab` repository so its behavior is not silently
-changed during migration.
