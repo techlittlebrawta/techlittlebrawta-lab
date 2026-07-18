@@ -31,9 +31,9 @@ the script and batch input. It writes events to the `veracode` index with the
 
 ## Deployment review
 
-Do not copy the archived add-on blindly into production. Its `local`
+Do not copy the migrated add-on blindly into production. Its `local`
 configuration is enabled and environment-specific. First make a working copy
-outside the archive, review the schedule, index, filesystem path, permissions,
+outside this folder, review the schedule, index, filesystem path, permissions,
 retention, and credential placement, then deploy the reviewed copy as
 `$SPLUNK_HOME/etc/apps/TA-veracode`.
 

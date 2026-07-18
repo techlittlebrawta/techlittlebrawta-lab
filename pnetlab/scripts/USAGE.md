@@ -24,7 +24,7 @@ a currently selected lab session.
 - A PNETLab account authorized to operate the selected lab.
 - A lab snapshot or export before stop, wipe, or node-add operations.
 
-Create an isolated environment outside the archive:
+Create an isolated environment outside this scripts folder:
 
 ```sh
 python3 -m venv .venv
@@ -44,7 +44,7 @@ The shared client disables TLS verification on all requests and sets no request
 timeouts. These values and behaviors are intentionally unchanged for archival
 fidelity. Do not expose this lab service to an untrusted network, reuse the
 credential elsewhere, or treat this as production-ready code. If the lab values
-differ, make a working copy outside the archive and keep secrets out of Git.
+differ, make a working copy outside this scripts folder and keep secrets out of Git.
 
 ## Running the tools
 
