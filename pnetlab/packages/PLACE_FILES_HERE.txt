@@ -1,0 +1,14 @@
+Place these eleven authorized local PNETLab files in this directory without
+renaming or extracting them:
+
+pnetlab_kernel.zip
+pre-docker.zip
+swtpm-focal.zip
+pnetlab-guacamole_6.0.0-7_amd64.deb
+pnetlab-dynamips_6.0.0-30_amd64.deb
+pnetlab-schema_6.0.0-30_amd64.deb
+pnetlab-vpcs_6.0.0-30_amd64.deb
+pnetlab-qemu_6.0.0-30_amd64.deb
+pnetlab-docker_6.0.0-30_amd64.deb
+pnetlab_6.0.0-103_amd64.deb
+pnetlab-wireshark_6.0.0-30_amd64.deb
