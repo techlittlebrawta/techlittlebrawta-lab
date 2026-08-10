@@ -1,0 +1,70 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.tmp
+*.bak
+
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.keystore
+*.crt
+*.cer
+credentials.*
+secrets.*
+*.secret
+
+# Logs / build
+*.log
+node_modules/
+dist/
+build/
+coverage/
+
+# Managed public-lab exclusions
+# Prevent accidental publication of VM disks, firmware and appliance images.
+*.qcow
+*.qcow2
+*.vmdk
+*.vdi
+*.vhd
+*.vhdx
+*.ova
+*.iso
+*.img
+*.raw
+*.hdd
+*.nvram
+
+# Common firmware/appliance packages
+*.bin
+*.image
+*.swi
+*.pkg
+*.deb
+*.rpm
+
+# Archives frequently used to transport vendor images
+*.7z
+*.rar
+*.tar
+*.tgz
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+
+# License / entitlement artifacts
+*.lic
+*.license
+*.entitlement
+
