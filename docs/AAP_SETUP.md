@@ -1,12 +1,18 @@
 # AAP + GitHub Operating Baseline
 
-This repository is the reviewed source of truth for Tech Little Brawta lab automation. Red Hat Ansible Automation Platform (AAP) is the execution plane for the private lab network.
+Red Hat Ansible Automation Platform (AAP) is the **only automation, validation, scheduling, orchestration, and execution plane** for the Tech Little Brawta lab. GitHub is passive source storage and version history only.
+
+## Non-negotiable execution boundary
+
+GitHub must not run automation for this repository. Do not configure GitHub Actions, Dependabot automation, GitHub-hosted runners, self-hosted GitHub runners, repository-dispatch jobs, deployment workflows, scheduled GitHub workflows, or GitHub webhooks that trigger AAP.
+
+AAP initiates all SCM synchronization and all lab activity. GitHub never needs a route to AAP or to the private management network.
 
 ## Security boundary
 
 GitHub stores automation code, examples, documentation, and non-secret metadata. AAP stores live management IPs, usernames, passwords, SSH private keys, API credentials, and other environment-specific values.
 
-Do not commit the 192.168.1.0/24 management inventory or credentials to this public repository.
+Do not commit the live `192.168.1.0/24` management inventory or credentials to this public repository.
 
 ## AAP objects
 
@@ -24,39 +30,44 @@ Create `TLB | Lab Automation` with:
 - Source control branch: `main`
 - Clean: enabled
 - Delete on update: disabled
-- Update revision on launch: disabled
-- Allow branch override: disabled
+- Update Revision on Launch: enabled
+- Allow Branch Override: disabled
+- SCM credential: none while the repository remains public
 
-The repository is public, so a source-control credential is not required for read-only synchronization. If it becomes private, use a dedicated read-only GitHub credential rather than a personal administrator token.
+`Update Revision on Launch` is intentionally enabled because **AAP**, not GitHub, must initiate synchronization. Do not configure a webhook on this project.
+
+If the repository becomes private, create a dedicated read-only SCM credential in AAP scoped only to this repository. Do not use a personal organization-administrator token.
 
 ### Inventory
 
-Create standard inventory `TLB | Lab` in `Tech Little Brawta` and maintain the live inventory in AAP.
+Create standard inventory `TLB | Lab` in `Tech Little Brawta`. Maintain the live host addresses only in AAP.
 
 Groups and hosts:
 
-- `aap_control_plane`: `LAB-AAP-CONT-01` -> live `ansible_host` maintained in AAP
-- `linux_managed`: `LAB-PNETLAB-01` -> live `ansible_host` maintained in AAP
-- `virtualization`: `LAB-ESXI-01` -> live `ansible_host` maintained in AAP
-- `juniper`: `LAB-SW-EX2200` -> live `ansible_host` maintained in AAP
+- `aap_control_plane`: `LAB-AAP-CONT-01`
+- `linux_managed`: `LAB-PNETLAB-01`
+- `virtualization`: `LAB-ESXI-01`
+- `juniper`: `LAB-SW-EX2200`
 
-Set non-secret service variables:
+Enter each host's real `ansible_host` in AAP, not GitHub.
+
+Set non-secret service variables in AAP:
 
 - `LAB-AAP-CONT-01`: `tlb_preflight_port: 22`
 - `LAB-PNETLAB-01`: `tlb_preflight_port: 22`
 - `LAB-ESXI-01`: `tlb_preflight_port: 443`
 - `LAB-SW-EX2200`: `ansible_port: 830` and `tlb_preflight_port: 830`
 
-NETCONF over SSH must be enabled on the EX2200 before the Junos facts job will work.
+NETCONF over SSH must be enabled on the EX2200 before Junos automation will work.
 
 ## Credentials
 
-Create separate least-privilege credentials; do not reuse one administrator account across platforms.
+Create separate least-privilege credentials in AAP. Do not reuse one administrator identity across platforms.
 
 - `TLB | Linux SSH` — AAP Machine credential for Linux-managed systems.
 - `TLB | Junos Automation` — dedicated Junos automation identity using SSH keys and only required Junos permissions.
 - `TLB | VMware API` — dedicated ESXi/vSphere API identity when VMware API automation is enabled.
-- `TLB | GitHub SCM` — only if the repository becomes private; read-only repository access preferred.
+- `TLB | GitHub SCM` — only if the repository becomes private; read-only repository access.
 
 Keep privilege escalation separate from login credentials and use SSH keys instead of passwords where supported.
 
@@ -64,48 +75,80 @@ Keep privilege escalation separate from login credentials and use SSH keys inste
 
 Build a dedicated image from `execution-environment.yml` and publish it to private automation hub or another approved registry as `TLB | EE | Network`.
 
-The definition uses Red Hat's Ansible Core 2.18 minimal RHEL 9 execution-environment stream and installs the pinned `juniper.device` collection plus its Python dependencies. Do not use the built-in Core 2.16 execution environment for the current Juniper collection.
+The image contains the Ansible/Juniper runtime plus `ansible-lint` and `yamllint`, because repository validation is executed by AAP rather than GitHub.
 
-Promote immutable image tags through testing rather than running production jobs from an unreviewed `latest` tag.
+Promote immutable image tags through testing rather than running important jobs from an unreviewed `latest` tag.
 
 ## Job templates
 
-Create:
+Create the following templates.
 
-1. `TLB | Lab | Preflight`
-   - Project: `TLB | Lab Automation`
-   - Inventory: `TLB | Lab`
-   - Playbook: `playbooks/preflight.yml`
-   - Credentials: none
-   - Purpose: validate that the selected execution node can reach each management service.
+### 1. TLB | Repository | Validate
 
-2. `TLB | Linux | Gather Facts`
-   - Project: `TLB | Lab Automation`
-   - Inventory: `TLB | Lab`
-   - Playbook: `playbooks/linux_facts.yml`
-   - Credential: `TLB | Linux SSH`
-   - Limit: `linux_managed`
+- Project: `TLB | Lab Automation`
+- Inventory: `TLB | Lab`
+- Playbook: `playbooks/repository_validate.yml`
+- Execution environment: `TLB | EE | Network`
+- Credentials: none
+- Purpose: run YAML linting, Ansible linting, and syntax checks inside AAP before lab execution
 
-3. `TLB | Junos | Gather Facts`
-   - Project: `TLB | Lab Automation`
-   - Inventory: `TLB | Lab`
-   - Playbook: `playbooks/junos_facts.yml`
-   - Execution environment: `TLB | EE | Network`
-   - Credential: `TLB | Junos Automation`
-   - Limit: `juniper`
+Although the AAP inventory is attached to the template for controller consistency, this validation playbook targets `localhost` inside the execution environment and does not connect to lab hosts.
+
+### 2. TLB | Lab | Preflight
+
+- Project: `TLB | Lab Automation`
+- Inventory: `TLB | Lab`
+- Playbook: `playbooks/preflight.yml`
+- Credentials: none
+- Purpose: validate that the selected AAP execution node can reach each required management service
+
+### 3. TLB | Linux | Gather Facts
+
+- Project: `TLB | Lab Automation`
+- Inventory: `TLB | Lab`
+- Playbook: `playbooks/linux_facts.yml`
+- Credential: `TLB | Linux SSH`
+- Limit: `linux_managed`
+
+### 4. TLB | Junos | Gather Facts
+
+- Project: `TLB | Lab Automation`
+- Inventory: `TLB | Lab`
+- Playbook: `playbooks/junos_facts.yml`
+- Execution environment: `TLB | EE | Network`
+- Credential: `TLB | Junos Automation`
+- Limit: `juniper`
 
 Do not target the AAP control-plane host from general infrastructure templates. Control-plane maintenance must use dedicated automation and explicit approval.
 
-## Workflow
+## AAP workflow
 
-Create workflow `TLB | Lab | Validate`:
+Create workflow `TLB | Lab | Validate` with the following success path:
 
-1. Project sync: `TLB | Lab Automation`
-2. On success: `TLB | Lab | Preflight`
-3. On success: `TLB | Linux | Gather Facts`
-4. On success: `TLB | Junos | Gather Facts`
+1. **Project Sync — `TLB | Lab Automation`**
+2. **`TLB | Repository | Validate`**
+3. **`TLB | Lab | Preflight`**
+4. **`TLB | Linux | Gather Facts`**
+5. **`TLB | Junos | Gather Facts`**
 
-Add ESXi API validation after the VMware credential and approved VMware collection are established.
+Every node is launched by AAP. A failure at any validation or preflight node must prevent downstream execution.
+
+Add ESXi API validation after the VMware credential and approved VMware automation implementation are established.
+
+## Scheduling
+
+Any recurring automation must be scheduled in AAP only.
+
+Examples:
+
+- periodic project synchronization;
+- inventory validation;
+- configuration backups;
+- compliance checks;
+- fact collection;
+- patching or maintenance workflows.
+
+Do not reproduce an AAP schedule in GitHub.
 
 ## RBAC
 
@@ -116,20 +159,22 @@ Prefer team-based access:
 - `TLB-Automation-Operators` — execute approved templates/workflows only.
 - `TLB-Automation-Auditors` — read-only job, inventory, and template access.
 
-## AAP 2.7 Configuration as Code
+Use separate credentials and execution permissions so operators can launch approved jobs without viewing the underlying secrets.
 
-If `LAB-AAP-CONT-01` is running AAP 2.7, manage supported platform configuration through the `ansible.platform` collection and the platform gateway. Store desired-state YAML in Git, authenticate using a platform-gateway token/credential held by AAP, run in check mode before apply, and keep controller configuration changes behind pull requests.
+## AAP Configuration as Code
 
-Do not place a platform gateway token in GitHub Actions or expose the private AAP endpoint to GitHub merely to perform controller configuration.
+Where supported by the installed AAP version, manage controller/platform desired state with the supported Red Hat configuration collection. Store the non-secret desired-state content in GitHub, but **execute the configuration from AAP** with platform credentials held only by AAP.
 
-## Change flow
+Run controller configuration in check mode before apply when the module supports it. Never place an AAP platform token in GitHub and never expose the AAP API to GitHub automation.
 
-1. Feature branch.
-2. Pull request.
-3. YAML/Ansible CI.
-4. Code-owner review.
-5. Squash merge to `main`.
-6. AAP project sync.
-7. Run `TLB | Lab | Validate` before higher-risk automation.
+## Approved change and execution flow
 
-GitHub is the source of truth for code; AAP is the source of truth for secrets and live private-network inventory.
+1. Store or update approved automation content in GitHub.
+2. Launch the AAP workflow or AAP job template.
+3. AAP pulls the selected `main` revision from GitHub.
+4. AAP runs `TLB | Repository | Validate`.
+5. AAP runs `TLB | Lab | Preflight`.
+6. AAP performs the approved lab automation.
+7. AAP retains the job events, status, output, and audit history.
+
+The architecture is intentionally one-way from the automation plane: **AAP pulls from GitHub; GitHub never pushes into AAP.**
