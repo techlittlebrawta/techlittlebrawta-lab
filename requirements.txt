@@ -3,3 +3,5 @@ jxmlease>=1.0.1
 xmltodict>=0.13.0
 jsnapy>=1.3.7
 packaging>=25.0
+ansible-lint
+yamllint
