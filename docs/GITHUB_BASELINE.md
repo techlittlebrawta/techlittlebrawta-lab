@@ -1,41 +1,48 @@
-# GitHub Repository Protection Baseline
+# GitHub Passive Storage Baseline
 
-The repository should use GitHub rulesets and native security controls to protect `main`.
+GitHub is passive source storage and version history for `techlittlebrawta-lab`. It is **not** an automation, validation, scheduling, orchestration, deployment, or execution platform for this lab.
 
-## Main branch ruleset
+## Allowed role
 
-Target the default branch and enforce:
+GitHub may:
 
-- Require a pull request before merging.
-- Require at least one approval.
-- Require review from Code Owners.
-- Dismiss stale approvals when new commits are pushed.
-- Require all review conversations to be resolved.
-- Require the `ansible-ci` status check to pass.
-- Require branches to be up to date before merge when supported by the selected status-check configuration.
-- Require linear history.
-- Block force pushes.
-- Block branch deletion.
-- Do not permit routine bypasses; reserve bypass for organization administrators for break-glass recovery.
+- store approved source code, configuration examples, documentation, and non-secret metadata;
+- retain source history;
+- serve repository content to AAP when AAP initiates an outbound SCM synchronization.
 
-The repository already uses squash merging as its only merge strategy. Keep that setting.
+## Prohibited automation
 
-## Security controls
+Do not configure or use the following for this repository:
 
-- Keep GitHub secret scanning enabled.
-- Enable repository push protection when the organization plan supports it.
-- Keep the repository free of credentials, tokens, SSH private keys, private certificates, and sensitive environment inventory.
-- Use Dependabot for GitHub Actions updates.
-- Keep workflow permissions read-only unless a workflow explicitly requires write access.
-- Pin third-party actions to reviewed versions or immutable commit SHAs for higher-assurance workflows.
+- GitHub Actions workflows;
+- GitHub-hosted or self-hosted Actions runners;
+- Dependabot automation;
+- GitHub deployment workflows or environments as an execution mechanism;
+- GitHub scheduled workflows;
+- repository dispatch automation;
+- GitHub webhooks that trigger AAP;
+- GitHub automation that calls the AAP API;
+- GitHub automation that connects to the private lab network.
 
-## Access
-
-- Grant access through organization teams rather than ad-hoc collaborators where possible.
-- Keep administrator membership small.
-- Require multi-factor authentication at the organization level.
-- Prefer GitHub Apps or fine-grained credentials scoped to the minimum repository permissions needed by automation.
+GitHub must never possess credentials that provide access to AAP or the private lab solely for automation purposes.
 
 ## AAP integration
 
-AAP should pull this repository over outbound HTTPS. GitHub Actions must not be given a path or credentials to reach the private lab network. Private-lab execution belongs in AAP execution environments and instance groups.
+AAP owns every automated action:
+
+1. AAP initiates the SCM project synchronization over outbound HTTPS/443.
+2. AAP validates the synchronized repository content.
+3. AAP performs management-plane preflight checks.
+4. AAP executes approved playbooks and workflows.
+5. AAP stores job history and execution output.
+
+Do not configure a GitHub webhook for the AAP project. Project synchronization must be manual, scheduled from AAP, or performed by AAP through `Update Revision on Launch`.
+
+## Repository security boundary
+
+- Do not store credentials, tokens, SSH private keys, private certificates, or live private-management inventory in GitHub.
+- Keep the real lab inventory and all credentials in AAP.
+- AAP requires only outbound access to GitHub; GitHub requires no inbound route to AAP or the lab.
+- If the repository becomes private, use an AAP-held read-only SCM credential scoped only to this repository.
+
+This boundary is intentional: **GitHub stores; AAP acts.**
