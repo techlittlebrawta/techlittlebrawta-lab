@@ -8,6 +8,11 @@ Desktop.ini
 *.tmp
 *.bak
 
+# Ansible local/cache state
+.ansible/
+.cache/
+*.retry
+
 # Secrets / local environment
 .env
 .env.*
@@ -23,6 +28,10 @@ Desktop.ini
 credentials.*
 secrets.*
 *.secret
+
+# Private AAP inventory overlays
+inventories/**/inventory.private.yml
+inventories/**/hosts.local.yml
 
 # Logs / build
 *.log
@@ -67,4 +76,3 @@ coverage/
 *.lic
 *.license
 *.entitlement
-

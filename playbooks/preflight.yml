@@ -1,0 +1,18 @@
+---
+- name: Validate lab management-plane reachability
+  hosts: all
+  gather_facts: false
+  vars:
+    tlb_target_host: "{{ ansible_host | default(inventory_hostname) }}"
+    tlb_target_port: "{{ tlb_preflight_port | default(22) }}"
+
+  tasks:
+    - name: Check management TCP port from the execution environment
+      ansible.builtin.wait_for:
+        host: "{{ tlb_target_host }}"
+        port: "{{ tlb_target_port | int }}"
+        state: started
+        connect_timeout: 3
+        timeout: 10
+      delegate_to: localhost
+      changed_when: false
