@@ -1,0 +1,46 @@
+---
+- name: Validate repository automation content in AAP
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    tlb_validation_inventory: inventories/lab/inventory.example.yml
+    tlb_validation_playbooks:
+      - playbooks/repository_validate.yml
+      - playbooks/preflight.yml
+      - playbooks/linux_facts.yml
+      - playbooks/junos_facts.yml
+
+  tasks:
+    - name: Validate YAML formatting
+      ansible.builtin.command:
+        argv:
+          - yamllint
+          - -c
+          - .yamllint.yml
+          - .ansible-lint
+          - collections
+          - inventories
+          - playbooks
+          - execution-environment.yml
+      changed_when: false
+
+    - name: Run Ansible lint without network access
+      ansible.builtin.command:
+        argv:
+          - ansible-lint
+          - --offline
+          - playbooks
+      changed_when: false
+
+    - name: Syntax-check approved playbooks
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - -i
+          - "{{ tlb_validation_inventory }}"
+          - --syntax-check
+          - "{{ item }}"
+      loop: "{{ tlb_validation_playbooks }}"
+      changed_when: false

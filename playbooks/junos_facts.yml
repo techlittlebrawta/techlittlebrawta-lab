@@ -1,0 +1,27 @@
+---
+- name: Gather facts from Juniper Junos lab devices
+  hosts: juniper
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Check NETCONF reachability
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+        port: "{{ ansible_port | default(830) | int }}"
+        state: started
+        connect_timeout: 3
+        timeout: 10
+      changed_when: false
+
+    - name: Gather Junos facts
+      juniper.device.facts:
+        host: "{{ ansible_host | default(inventory_hostname) }}"
+
+    - name: Show Junos identity
+      ansible.builtin.debug:
+        msg:
+          - "Inventory host: {{ inventory_hostname }}"
+          - "Hostname: {{ ansible_facts.junos.hostname | default('unknown') }}"
+          - "Model: {{ ansible_facts.junos.model | default('unknown') }}"
+          - "Version: {{ ansible_facts.junos.version | default('unknown') }}"

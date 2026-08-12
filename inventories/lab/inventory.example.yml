@@ -1,0 +1,24 @@
+---
+# Public example only. Keep real management IPs and credentials in AAP.
+all:
+  children:
+    aap_control_plane:
+      hosts:
+        LAB-AAP-CONT-01:
+          tlb_preflight_port: 22
+
+    linux_managed:
+      hosts:
+        LAB-PNETLAB-01:
+          tlb_preflight_port: 22
+
+    virtualization:
+      hosts:
+        LAB-ESXI-01:
+          tlb_preflight_port: 443
+
+    juniper:
+      hosts:
+        LAB-SW-EX2200:
+          ansible_port: 830
+          tlb_preflight_port: 830

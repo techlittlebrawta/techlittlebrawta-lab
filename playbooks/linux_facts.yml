@@ -1,0 +1,14 @@
+---
+- name: Gather facts from Linux-managed lab systems
+  hosts: linux_managed
+  gather_facts: true
+  become: false
+
+  tasks:
+    - name: Show managed-node identity
+      ansible.builtin.debug:
+        msg:
+          - "Inventory host: {{ inventory_hostname }}"
+          - "System: {{ ansible_facts.system | default('unknown') }}"
+          - "Distribution: {{ ansible_facts.distribution | default('unknown') }}"
+          - "Version: {{ ansible_facts.distribution_version | default('unknown') }}"
