@@ -43,7 +43,9 @@
         that:
           - tlb_junos_ntp.stdout[0] is regex('(?m)^synchronised to NTP server')
           - "'*' in tlb_junos_ntp.stdout[1]"
-        fail_msg: Junos has no selected, synchronized NTP peer.
+        fail_msg: >-
+          Junos has no selected, synchronized NTP peer. Status:
+          {{ tlb_junos_ntp.stdout | join(' | ') }}
 
 - name: Audit ESXi time synchronization
   hosts: virtualization
@@ -63,9 +65,11 @@
         that:
           - >-
             (tlb_internal_ntp_servers
-            | difference(tlb_esxi_ntp.hosts_ntp_info[ansible_host][0].ntp_servers))
+            | difference((tlb_esxi_ntp.hosts_ntp_info.values() | first)[0].ntp_servers))
             | length == 0
-        fail_msg: ESXi does not have every approved internal NTP source configured.
+        fail_msg: >-
+          ESXi does not have every approved internal NTP source configured. Current:
+          {{ (tlb_esxi_ntp.hosts_ntp_info.values() | first)[0].ntp_servers }}
 
 - name: Report a single cross-platform time-compliance result
   hosts: localhost
