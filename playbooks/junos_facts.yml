@@ -1,0 +1,21 @@
+---
+- name: Safely gather Junos facts over NETCONF
+  hosts: juniper
+  gather_facts: false
+  connection: ansible.netcommon.netconf
+  vars:
+    ansible_network_os: junipernetworks.junos.junos
+    ansible_port: 830
+
+  tasks:
+    - name: Gather Junos facts
+      junipernetworks.junos.junos_facts:
+        gather_subset:
+          - min
+
+    - name: Report a non-sensitive Junos platform summary
+      ansible.builtin.debug:
+        msg:
+          hostname: "{{ ansible_facts.net_hostname | default(inventory_hostname) }}"
+          model: "{{ ansible_facts.net_model | default('unknown') }}"
+          version: "{{ ansible_facts.net_version | default('unknown') }}"
