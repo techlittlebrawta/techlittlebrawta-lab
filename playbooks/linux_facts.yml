@@ -1,0 +1,14 @@
+---
+- name: Safely gather Linux facts
+  hosts: linux_managed
+  gather_facts: true
+  become: false
+
+  tasks:
+    - name: Report a non-sensitive platform summary
+      ansible.builtin.debug:
+        msg:
+          hostname: "{{ ansible_facts.hostname }}"
+          distribution: "{{ ansible_facts.distribution }}"
+          distribution_version: "{{ ansible_facts.distribution_version }}"
+          kernel: "{{ ansible_facts.kernel }}"
