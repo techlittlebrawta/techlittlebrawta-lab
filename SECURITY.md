@@ -30,4 +30,4 @@ If a secret is committed, treat it as compromised and rotate/revoke it immediate
 - Never grant routine automation unrestricted sudo, Junos `super-user`, or ESXi `Administrator`; use the reviewed platform-specific roles in this repository.
 - Require a pull request, CODEOWNERS review, passing automation-quality checks, and an approval-gated AAP workflow for changes.
 
-The full standard is documented in [AUTOMATION_IDENTITY.md](AUTOMATION_IDENTITY.md).
+The full standard is documented in [automation identity](automation/docs/automation-identity.md).

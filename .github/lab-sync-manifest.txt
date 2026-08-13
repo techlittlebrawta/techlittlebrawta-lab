@@ -1,0 +1,33 @@
+# Shared public-safe automation content. The private lab may add overlays, but
+# every path listed here must remain byte-for-byte identical in both repos.
+.github/dependabot.yml
+.github/lab-sync-manifest.txt
+.github/workflows/automation-quality.yml
+bindep.txt
+collections/requirements.yml
+execution-environment.yml
+requirements.txt
+automation/controller/aap-managed.yml
+automation/docs/automation-identity.md
+automation/docs/operations.md
+automation/files/tlb-linux-maintenance
+automation/inventories/examples/lab.yml
+automation/playbooks/automation_identity_validate.yml
+automation/playbooks/controller_configure.yml
+automation/playbooks/esxi_privilege_harden.yml
+automation/playbooks/junos_facts.yml
+automation/playbooks/junos_privilege_harden.yml
+automation/playbooks/linux_facts.yml
+automation/playbooks/linux_patch_apply.yml
+automation/playbooks/linux_patch_audit.yml
+automation/playbooks/linux_privilege_harden.yml
+automation/playbooks/pnetlab_discovery.yml
+automation/playbooks/preflight.yml
+automation/playbooks/privilege_validate.yml
+automation/playbooks/repository_validate.yml
+automation/playbooks/time_audit.yml
+automation/playbooks/time_remediate.yml
+automation/playbooks/vmware_discovery.yml
+automation/templates/chrony.conf.j2
+automation/templates/tlb-automation.sudoers.j2
+automation/tools/aap_reconcile.py
