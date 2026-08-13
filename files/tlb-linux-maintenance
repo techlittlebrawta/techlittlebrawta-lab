@@ -36,10 +36,10 @@ time_remediate() {
   require_root
   timedatectl set-timezone UTC
   timedatectl set-ntp true
-  if systemctl list-unit-files chronyd.service >/dev/null 2>&1; then
-    systemctl enable --now chronyd.service
-  elif systemctl list-unit-files chrony.service >/dev/null 2>&1; then
+  if systemctl list-unit-files --no-legend chrony.service 2>/dev/null | grep -q '^chrony.service'; then
     systemctl enable --now chrony.service
+  elif systemctl list-unit-files --no-legend chronyd.service 2>/dev/null | grep -q '^chronyd.service'; then
+    systemctl enable --now chronyd.service
   else
     echo "chrony service is not installed" >&2
     exit 69
