@@ -279,10 +279,8 @@ controller_templates:
     playbook: playbooks/time_audit.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
-    credentials:
-      - TLB | Linux SSH
-      - TLB | Junos NETCONF
-      - TLB | VMware API
+    credentials: [TLB | Linux SSH]
+    limit: aap_control_plane:linux_managed
     job_type: run
     timeout: 900
     ask_credential_on_launch: false
@@ -294,10 +292,8 @@ controller_templates:
     playbook: playbooks/time_remediate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
-    credentials:
-      - TLB | Linux SSH
-      - TLB | Junos NETCONF
-      - TLB | VMware API
+    credentials: [TLB | Linux SSH]
+    limit: aap_control_plane:linux_managed
     job_type: run
     become_enabled: true
     timeout: 1800
@@ -311,15 +307,73 @@ controller_templates:
     playbook: playbooks/privilege_validate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
-    credentials:
-      - TLB | Linux SSH
-      - TLB | Junos NETCONF
-      - TLB | VMware API
+    credentials: [TLB | Linux SSH]
+    limit: aap_control_plane:linux_managed
     job_type: run
     timeout: 900
     ask_credential_on_launch: false
     ask_variables_on_launch: false
     ask_limit_on_launch: false
+  - name: TLB | Time | Audit Junos
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/time_audit.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Junos NETCONF]
+    limit: juniper
+    job_type: run
+    timeout: 900
+  - name: TLB | Time | Audit ESXi
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/time_audit.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | VMware API]
+    limit: virtualization
+    job_type: run
+    timeout: 900
+  - name: TLB | Time | Remediate Junos
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/time_remediate.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Junos NETCONF]
+    limit: juniper
+    job_type: run
+    timeout: 1800
+  - name: TLB | Time | Remediate ESXi
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/time_remediate.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | VMware API]
+    limit: virtualization
+    job_type: run
+    timeout: 1800
+  - name: TLB | Identity | Validate Junos Privilege
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/privilege_validate.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Junos NETCONF]
+    limit: juniper
+    job_type: run
+    timeout: 900
+  - name: TLB | Identity | Validate ESXi Privilege
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/privilege_validate.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | VMware API]
+    limit: virtualization
+    job_type: run
+    timeout: 900
 
 controller_workflows:
   - name: TLB | Lab | Validate
@@ -400,9 +454,15 @@ controller_workflows:
       - identifier: esxi_privilege
         unified_job_template: TLB | ESXi | Harden Privilege
         lookup_organization: "{{ tlb_organization_name }}"
-        success_nodes: [privilege_validate]
+        success_nodes: [privilege_validate, privilege_validate_junos, privilege_validate_esxi]
       - identifier: privilege_validate
         unified_job_template: TLB | Identity | Validate Least Privilege
+        lookup_organization: "{{ tlb_organization_name }}"
+      - identifier: privilege_validate_junos
+        unified_job_template: TLB | Identity | Validate Junos Privilege
+        lookup_organization: "{{ tlb_organization_name }}"
+      - identifier: privilege_validate_esxi
+        unified_job_template: TLB | Identity | Validate ESXi Privilege
         lookup_organization: "{{ tlb_organization_name }}"
   - name: TLB | Time | Governed Remediation
     organization: "{{ tlb_organization_name }}"
@@ -415,13 +475,42 @@ controller_workflows:
           name: Approve cross-platform time remediation
           description: Confirm backups and impact of correcting materially inaccurate clocks.
           timeout: 86400
-        success_nodes: [time_remediate]
+        success_nodes: [time_remediate, time_remediate_junos, time_remediate_esxi]
       - identifier: time_remediate
         unified_job_template: TLB | Time | Remediate
         lookup_organization: "{{ tlb_organization_name }}"
         success_nodes: [time_audit]
+      - identifier: time_remediate_junos
+        unified_job_template: TLB | Time | Remediate Junos
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [time_audit_junos]
+      - identifier: time_remediate_esxi
+        unified_job_template: TLB | Time | Remediate ESXi
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [time_audit_esxi]
       - identifier: time_audit
         unified_job_template: TLB | Time | Audit
+        lookup_organization: "{{ tlb_organization_name }}"
+      - identifier: time_audit_junos
+        unified_job_template: TLB | Time | Audit Junos
+        lookup_organization: "{{ tlb_organization_name }}"
+      - identifier: time_audit_esxi
+        unified_job_template: TLB | Time | Audit ESXi
+        lookup_organization: "{{ tlb_organization_name }}"
+  - name: TLB | Time | Compliance Audit
+    organization: "{{ tlb_organization_name }}"
+    description: Credential-isolated cross-platform time compliance fan-out.
+    destroy_current_nodes: true
+    allow_simultaneous: false
+    workflow_nodes:
+      - identifier: time_audit_linux
+        unified_job_template: TLB | Time | Audit
+        lookup_organization: "{{ tlb_organization_name }}"
+      - identifier: time_audit_junos
+        unified_job_template: TLB | Time | Audit Junos
+        lookup_organization: "{{ tlb_organization_name }}"
+      - identifier: time_audit_esxi
+        unified_job_template: TLB | Time | Audit ESXi
         lookup_organization: "{{ tlb_organization_name }}"
 
 controller_schedules:
@@ -439,7 +528,7 @@ controller_schedules:
     enabled: true
   - name: TLB | Time | Audit | Every 6 Hours
     description: Cross-platform time-source and synchronization compliance audit.
-    unified_job_template: TLB | Time | Audit
+    unified_job_template: TLB | Time | Compliance Audit
     organization: "{{ tlb_organization_name }}"
     rrule: "DTSTART:20260814T000000Z RRULE:FREQ=HOURLY;INTERVAL=6"
     enabled: true
