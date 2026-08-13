@@ -1,0 +1,23 @@
+---
+- name: Safely discover PNETLab platform details
+  hosts: linux_managed
+  gather_facts: true
+  become: false
+
+  tasks:
+    - name: Read PNETLab release metadata when present
+      ansible.builtin.slurp:
+        src: /opt/unetlab/html/includes/version.php
+      register: pnetlab_version_file
+      failed_when: false
+      changed_when: false
+
+    - name: Read service facts
+      ansible.builtin.service_facts:
+
+    - name: Report safe PNETLab discovery results
+      ansible.builtin.debug:
+        msg:
+          distribution: "{{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+          version_metadata_present: "{{ not pnetlab_version_file.failed }}"
+          service_count: "{{ ansible_facts.services | default({}) | length }}"
