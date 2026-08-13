@@ -10,6 +10,9 @@
     controller_oauthtoken: "{{ lookup('env', 'CONTROLLER_OAUTH_TOKEN') }}"
     controller_validate_certs: true
     controller_configuration_secure_logging: true
+    # Organization/team/RBAC bootstrap requires a separately authorized
+    # Organization Editor. Routine reconciliation stays resource-scoped.
+    tlb_reconcile_identity_boundary: false
 
   pre_tasks:
     - name: Require controller authentication, endpoint data, and a published EE image
@@ -30,10 +33,12 @@
     - name: Reconcile organizations
       ansible.builtin.include_role:
         name: infra.controller_configuration.organizations
+      when: tlb_reconcile_identity_boundary | bool
 
     - name: Reconcile teams
       ansible.builtin.include_role:
         name: infra.controller_configuration.teams
+      when: tlb_reconcile_identity_boundary | bool
 
     - name: Reconcile inventories
       ansible.builtin.include_role:
@@ -86,3 +91,4 @@
       loop_control:
         label: "{{ item.team }} -> {{ item.role_definition }}"
       no_log: "{{ controller_configuration_secure_logging }}"
+      when: tlb_reconcile_identity_boundary | bool

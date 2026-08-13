@@ -4,6 +4,8 @@
 
 Git is the reviewed source of truth; AAP is the only normal execution plane. Job templates pin project, inventory, execution environment, credential, limit, timeout, and playbook. Operators cannot substitute credentials, arbitrary variables, limits, or SCM branches.
 
+Routine controller reconciliation runs as the resource-scoped `tlb-automation` account and deliberately skips organization, team, and gateway-role bootstrap. Set `tlb_reconcile_identity_boundary=true` only in a separately approved bootstrap session using an Organization Editor credential; never grant that role permanently to the routine service identity.
+
 Changes follow this sequence:
 
 1. Merge a reviewed pull request after required CI passes.
