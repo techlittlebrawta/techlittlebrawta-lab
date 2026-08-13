@@ -93,10 +93,6 @@ controller_credentials:
     organization: "{{ tlb_organization_name }}"
     credential_type: Machine
     description: Dedicated tlb-automation SSH identity; Ed25519 primary authentication with a vaulted fallback password.
-  - name: TLB | ESXi SSH
-    organization: "{{ tlb_organization_name }}"
-    credential_type: Machine
-    description: Dedicated tlb-automation SSH identity for audited ESXi maintenance.
   - name: TLB | Junos NETCONF
     organization: "{{ tlb_organization_name }}"
     credential_type: Machine
@@ -532,13 +528,6 @@ controller_schedules:
     organization: "{{ tlb_organization_name }}"
     rrule: "DTSTART:20260814T000000Z RRULE:FREQ=HOURLY;INTERVAL=6"
     enabled: true
-  - name: TLB | ESXi License Recovery | Daily 00:00 ET
-    description: Disabled legacy SSH Administrator workflow pending API least-privilege replacement.
-    unified_job_template: TLB | ESXi License Recovery
-    organization: "{{ tlb_organization_name }}"
-    rrule: "DTSTART;TZID=America/New_York:20260814T000000 RRULE:FREQ=DAILY;INTERVAL=1"
-    enabled: false
-
 gateway_role_team_assignments:
   - team: TLB-AAP-Admins
     role_definition: Organization Editor
