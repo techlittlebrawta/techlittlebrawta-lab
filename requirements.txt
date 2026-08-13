@@ -4,5 +4,5 @@ ansible-lint==24.12.2
 jmespath==1.0.1
 ncclient==0.7.0
 pyvmomi==9.0.0.0
-requests==2.32.5
+requests==2.34.2
 yamllint==1.38.0
