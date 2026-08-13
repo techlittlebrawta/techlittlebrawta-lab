@@ -1,0 +1,28 @@
+---
+- name: Validate the dedicated Linux automation identity
+  hosts: aap_control_plane:linux_managed
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Read the remote login identity
+      ansible.builtin.command: id -u
+      register: tlb_login_uid
+      changed_when: false
+
+    - name: Verify the login is not root
+      ansible.builtin.assert:
+        that:
+          - tlb_login_uid.stdout | trim != "0"
+        fail_msg: AAP must connect with the dedicated non-root automation identity.
+
+    - name: Verify non-interactive privilege escalation
+      ansible.builtin.command: sudo -n id -u
+      register: tlb_privileged_uid
+      changed_when: false
+
+    - name: Verify privilege escalation reaches root
+      ansible.builtin.assert:
+        that:
+          - tlb_privileged_uid.stdout | trim == "0"
+        fail_msg: The dedicated automation identity cannot perform required privileged automation.

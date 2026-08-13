@@ -30,6 +30,7 @@ node_modules/
 dist/
 build/
 coverage/
+.ansible/
 
 # Managed public-lab exclusions
 # Prevent accidental publication of VM disks, firmware and appliance images.
@@ -67,4 +68,3 @@ coverage/
 *.lic
 *.license
 *.entitlement
-

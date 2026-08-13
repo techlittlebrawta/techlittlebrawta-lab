@@ -1,0 +1,16 @@
+---
+# Structure-only example. Live management addresses and credentials belong in AAP.
+all:
+  children:
+    aap_control_plane:
+      hosts:
+        LAB-AAP-CONT-01: {}
+    linux_managed:
+      hosts:
+        LAB-PNETLAB-01: {}
+    virtualization:
+      hosts:
+        LAB-ESXI-01: {}
+    juniper:
+      hosts:
+        LAB-SW-EX2200: {}

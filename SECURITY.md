@@ -18,3 +18,14 @@ Never commit:
 - license keys or vendor entitlement files
 
 If a secret is committed, treat it as compromised and rotate/revoke it immediately.
+
+## Automation credentials
+
+- Use the dedicated `tlb-automation` identity for every TLB-managed endpoint and protocol.
+- Never attach root, admin, or personal accounts to TLB job templates, workflows, or schedules.
+- Prefer asymmetric authentication for SSH and keep protocol credentials in separate AAP credential objects.
+- Scope the AAP platform account to the TLB organization; it must not be a platform superuser.
+- Preserve a separately controlled break-glass path and validate new credentials before retiring old AAP bindings.
+- Never declare live credential `inputs` in this public repository.
+
+The full standard is documented in [AUTOMATION_IDENTITY.md](AUTOMATION_IDENTITY.md).
