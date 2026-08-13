@@ -9,10 +9,12 @@
     tlb_repository_root: "{{ playbook_dir | dirname }}"
 
   pre_tasks:
-    - name: Detect an existing least-privilege policy
-      ansible.builtin.stat:
-        path: /etc/sudoers.d/tlb-automation
-      register: tlb_sudo_policy
+    - name: Detect an existing least-privilege control without reading sudoers
+      ansible.builtin.command: >-
+        sudo -n /usr/local/sbin/tlb-linux-maintenance validate
+      register: tlb_policy_check
+      changed_when: false
+      failed_when: false
 
     - name: Read the unelevated login UID
       ansible.builtin.command: id -u
@@ -37,12 +39,12 @@
           {{ lookup('ansible.builtin.template',
           tlb_repository_root ~ '/templates/tlb-automation.sudoers.j2') }}
       changed_when: false
-      when: not tlb_sudo_policy.stat.exists
+      when: tlb_policy_check.rc != 0
 
   tasks:
     - name: Bootstrap the fixed privilege boundary once
       become: true
-      when: not tlb_sudo_policy.stat.exists
+      when: tlb_policy_check.rc != 0
       block:
         - name: Install chrony before privilege reduction
           ansible.builtin.package:
