@@ -1,0 +1,9 @@
+---
+profile: production
+exclude_paths:
+  - .git/
+  - .cache/
+  - collections/
+  - inventory/examples/
+mock_roles:
+  - infra.controller_configuration.dispatch
