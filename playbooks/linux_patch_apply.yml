@@ -1,0 +1,41 @@
+---
+- name: Apply approved Linux security updates through the fixed root interface
+  hosts: aap_control_plane:linux_managed
+  gather_facts: true
+  become: false
+  serial: 1
+  any_errors_fatal: true
+
+  pre_tasks:
+    - name: Require explicit per-host remediation authorization
+      ansible.builtin.assert:
+        that:
+          - tlb_patch_remediation_enabled | default(false) | bool
+        fail_msg: Remediation is disabled for this host pending vendor and recovery approval.
+
+    - name: Require adequate free space on the root filesystem
+      ansible.builtin.assert:
+        that:
+          - >-
+            (ansible_mounts | selectattr('mount', 'equalto', '/')
+            | map(attribute='size_available') | first | int) > 2147483648
+        fail_msg: At least 2 GiB of free root filesystem space is required.
+
+  tasks:
+    - name: Apply security updates via the audited allow-listed helper
+      ansible.builtin.command: sudo -n /usr/local/sbin/tlb-linux-maintenance patch-security
+      register: tlb_patch_result
+      changed_when: true
+      environment:
+        LC_ALL: C
+
+    - name: Check whether the update requires a reboot
+      ansible.builtin.command: sudo -n /usr/local/sbin/tlb-linux-maintenance reboot-required
+      register: tlb_reboot_required
+      changed_when: false
+      failed_when: tlb_reboot_required.rc not in [0, 10]
+
+    - name: Report controlled reboot requirement
+      ansible.builtin.debug:
+        msg: "A separately approved reboot is required for {{ inventory_hostname }}."
+      when: tlb_reboot_required.rc == 10

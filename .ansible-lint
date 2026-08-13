@@ -7,3 +7,5 @@ exclude_paths:
   - inventory/examples/
 mock_roles:
   - infra.controller_configuration.dispatch
+mock_modules:
+  - ansible.platform.role_team_assignment

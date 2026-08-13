@@ -1,0 +1,8 @@
+# Managed by AAP. Grants only the fixed, root-owned maintenance interface.
+Defaults:tlb-automation use_pty
+Defaults:tlb-automation log_output
+Cmnd_Alias TLB_LINUX_MAINTENANCE = /usr/local/sbin/tlb-linux-maintenance patch-security, \
+    /usr/local/sbin/tlb-linux-maintenance time-remediate, \
+    /usr/local/sbin/tlb-linux-maintenance reboot-required, \
+    /usr/local/sbin/tlb-linux-maintenance validate
+tlb-automation ALL=(root) NOPASSWD: TLB_LINUX_MAINTENANCE

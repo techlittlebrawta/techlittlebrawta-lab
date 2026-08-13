@@ -1,0 +1,30 @@
+---
+- name: Replace Junos super-user access with a configuration-scoped class
+  hosts: juniper
+  gather_facts: false
+  connection: ansible.netcommon.netconf
+  any_errors_fatal: true
+
+  tasks:
+    - name: Install the constrained Junos automation class with rollback protection
+      junipernetworks.junos.junos_config:
+        lines:
+          - set system login class tlb-aap-operator permissions configure
+          - set system login class tlb-aap-operator permissions view
+          - set system login class tlb-aap-operator permissions view-configuration
+          - set system login class tlb-aap-operator allow-commands "(show .*|configure.*|commit.*|rollback.*|exit|quit)"
+          - set system login class tlb-aap-operator allow-configuration "system ntp.*"
+          - set system login user tlb-automation class tlb-aap-operator
+        comment: "AAP least privilege {{ tower_job_id | default('manual') }}"
+        confirm: 5
+
+    - name: Verify the constrained identity can still run operational commands
+      junipernetworks.junos.junos_command:
+        commands:
+          - show system uptime
+          - show ntp status
+      changed_when: false
+
+    - name: Confirm the protected privilege commit
+      junipernetworks.junos.junos_config:
+        confirm_commit: true

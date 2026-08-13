@@ -1,0 +1,67 @@
+---
+name: Automation quality and security
+
+"on":
+  pull_request:
+    paths:
+      - ".github/**"
+      - "aap/**"
+      - "files/**"
+      - "playbooks/**"
+      - "templates/**"
+      - "collections/requirements.yml"
+      - "requirements.txt"
+      - "ansible.cfg"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: automation-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Lint and syntax check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the reviewed revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pinned validation dependencies
+        run: pip install --requirement requirements.txt
+
+      - name: Install pinned Ansible collections
+        run: ansible-galaxy collection install --requirements-file collections/requirements.yml
+
+      - name: Validate YAML
+        run: yamllint .
+
+      - name: Run production-profile Ansible lint
+        run: ansible-lint --strict --offline .
+
+      - name: Run every playbook syntax check
+        run: |
+          while IFS= read -r playbook; do
+            if [[ "$playbook" == "playbooks/controller_configure.yml" ]]; then
+              continue
+            fi
+            ansible-playbook --syntax-check "$playbook"
+          done < <(find playbooks -type f -name '*.yml' -print | sort)
+
+      - name: Explain controller configuration validation boundary
+        run: >-
+          echo 'controller_configure.yml is syntax-checked by the in-platform Repository Validate job because
+          ansible.platform is a Red Hat certified collection shipped in the AAP execution environment.'

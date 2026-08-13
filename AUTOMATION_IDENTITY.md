@@ -4,9 +4,9 @@ All managed lab endpoints use the dedicated `tlb-automation` service identity. H
 
 ## Authentication boundaries
 
-- Linux and the AAP host use Ed25519 SSH authentication. A unique, randomly generated fallback password remains encrypted in AAP; the account escalates through an audited sudo identity.
-- Junos uses a dedicated Network credential over NETCONF or SSH. The EX2200 requires its platform-native legacy password-hash format on the device; the AAP secret itself is a high-entropy random password.
-- Standalone ESXi uses separate VMware API and Machine credential objects with the same device-local service identity. This keeps API and SSH attachment explicit in job templates.
+- Linux and the AAP host use Ed25519 SSH authentication. The account is non-root and may invoke only exact subcommands of the root-owned `tlb-linux-maintenance` helper; arbitrary sudo is denied.
+- Junos uses a dedicated Network credential over NETCONF. The identity is mapped to the `tlb-aap-operator` command class, not `super-user`, and may change only the NTP hierarchy.
+- Standalone ESXi automation uses the VMware API with the `TLB Automation Time Operator` custom role. Routine templates do not attach the ESXi SSH credential.
 - AAP self-management uses a non-superuser platform account assigned only to `TLB-Automation-Maintainers`. The built-in `admin` account is not used by TLB automation.
 - GitHub source control uses a read-only deploy key and is not a device identity.
 
@@ -15,11 +15,12 @@ Credential values never belong in Git. They must be entered directly into AAP or
 ## Operating controls
 
 1. Rotate each trust boundary independently and validate the new credential before removing the old binding.
-2. Run `TLB | Identity | Validate Linux`, Junos facts, and VMware discovery after rotation.
+2. Run `TLB | Identity | Validate Least Privilege`, the time audit, Junos facts, and VMware discovery after rotation.
 3. Review every TLB template and workflow for credentials whose username is not `tlb-automation`; `git` is the sole expected exception for source control.
 4. Keep administrator accounts outside AAP as monitored break-glass access. Do not delete the final recovery path from a device.
 5. Revoke temporary bootstrap credentials immediately after independent validation.
 6. Keep host-key checking enabled and manage trusted host keys through the execution environment or an approved credential-injection control.
+7. Run privilege-changing jobs only through the approval-gated workflow after verifying console recovery and an off-device configuration backup.
 
 ## Rotation cadence
 

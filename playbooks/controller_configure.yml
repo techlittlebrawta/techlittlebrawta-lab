@@ -22,6 +22,7 @@
           - tlb_esxi_ip is defined and tlb_esxi_ip | length > 0
           - tlb_juniper_ip is defined and tlb_juniper_ip | length > 0
           - tlb_ee_image is defined and tlb_ee_image | length > 0
+          - tlb_management_network_cidr is defined and tlb_management_network_cidr | length > 0
         fail_msg: Supply controller auth through an AAP credential and live endpoints/EE image at launch.
       no_log: true
 
@@ -65,6 +66,10 @@
     - name: Reconcile workflow job templates
       ansible.builtin.include_role:
         name: infra.controller_configuration.workflow_job_templates
+
+    - name: Reconcile schedules
+      ansible.builtin.include_role:
+        name: infra.controller_configuration.schedules
 
     - name: Reconcile AAP 2.7 gateway team role assignments
       ansible.platform.role_team_assignment:

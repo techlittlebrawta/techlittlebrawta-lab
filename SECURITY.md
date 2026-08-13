@@ -27,5 +27,7 @@ If a secret is committed, treat it as compromised and rotate/revoke it immediate
 - Scope the AAP platform account to the TLB organization; it must not be a platform superuser.
 - Preserve a separately controlled break-glass path and validate new credentials before retiring old AAP bindings.
 - Never declare live credential `inputs` in this public repository.
+- Never grant routine automation unrestricted sudo, Junos `super-user`, or ESXi `Administrator`; use the reviewed platform-specific roles in this repository.
+- Require a pull request, CODEOWNERS review, passing automation-quality checks, and an approval-gated AAP workflow for changes.
 
 The full standard is documented in [AUTOMATION_IDENTITY.md](AUTOMATION_IDENTITY.md).

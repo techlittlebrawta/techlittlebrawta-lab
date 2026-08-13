@@ -29,6 +29,19 @@ controller_inventories:
   - name: "{{ tlb_inventory_name }}"
     organization: "{{ tlb_organization_name }}"
     description: Live management inventory; endpoint data is held only in AAP.
+    variables:
+      tlb_management_cidr: "{{ tlb_management_network_cidr }}"
+      tlb_external_ntp_servers:
+        - name: time.cloudflare.com
+          nts: true
+        - name: time.google.com
+        - name: time.facebook.com
+      tlb_internal_ntp_servers:
+        - "{{ tlb_aap_ip }}"
+        - "{{ tlb_pnetlab_ip }}"
+      tlb_patch_policy: security
+      tlb_patch_max_age_days: 30
+      tlb_vmware_validate_certs: false
 
 controller_hosts:
   - name: LAB-AAP-CONT-01
@@ -36,11 +49,13 @@ controller_hosts:
     variables:
       ansible_host: "{{ tlb_aap_ip }}"
       tlb_preflight_port: 22
+      tlb_patch_remediation_enabled: true
   - name: LAB-PNETLAB-01
     inventory: "{{ tlb_inventory_name }}"
     variables:
       ansible_host: "{{ tlb_pnetlab_ip }}"
       tlb_preflight_port: 22
+      tlb_patch_remediation_enabled: true
   - name: LAB-ESXI-01
     inventory: "{{ tlb_inventory_name }}"
     variables:
@@ -51,6 +66,8 @@ controller_hosts:
     variables:
       ansible_host: "{{ tlb_juniper_ip }}"
       ansible_port: 830
+      ansible_connection: ansible.netcommon.netconf
+      ansible_network_os: junipernetworks.junos.junos
       tlb_preflight_port: 830
 
 controller_groups:
@@ -145,6 +162,49 @@ controller_templates:
     credentials: [TLB | Linux SSH]
     limit: linux_managed
     job_type: run
+    timeout: 300
+  - name: TLB | Linux | Patch Audit
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/linux_patch_audit.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Linux SSH]
+    limit: aap_control_plane:linux_managed
+    job_type: run
+    timeout: 900
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
+  - name: TLB | Linux | Apply Security Updates
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/linux_patch_apply.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Linux SSH]
+    limit: aap_control_plane:linux_managed
+    job_type: run
+    timeout: 7200
+    forks: 1
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
+  - name: TLB | Linux | Harden Privilege
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/linux_privilege_harden.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Linux SSH]
+    limit: aap_control_plane:linux_managed
+    job_type: run
+    become_enabled: true
+    timeout: 900
+    forks: 1
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
   - name: TLB | Identity | Validate Linux
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
@@ -164,6 +224,20 @@ controller_templates:
     credentials: [TLB | Junos Automation]
     limit: juniper
     job_type: run
+    timeout: 300
+  - name: TLB | Junos | Harden Privilege
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/junos_privilege_harden.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Junos Automation]
+    limit: juniper
+    job_type: run
+    timeout: 600
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
   - name: TLB | VMware | Discover
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
@@ -173,6 +247,20 @@ controller_templates:
     credentials: [TLB | VMware API]
     limit: virtualization
     job_type: run
+    timeout: 300
+  - name: TLB | ESXi | Harden Privilege
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/esxi_privilege_harden.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | VMware API]
+    limit: virtualization
+    job_type: run
+    timeout: 600
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
   - name: TLB | PNETLab | Discover
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
@@ -182,6 +270,54 @@ controller_templates:
     credentials: [TLB | Linux SSH]
     limit: linux_managed
     job_type: run
+    timeout: 300
+  - name: TLB | Time | Audit
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/time_audit.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials:
+      - TLB | Linux SSH
+      - TLB | Junos Automation
+      - TLB | VMware API
+    job_type: run
+    timeout: 900
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
+  - name: TLB | Time | Remediate
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/time_remediate.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials:
+      - TLB | Linux SSH
+      - TLB | Junos Automation
+      - TLB | VMware API
+    job_type: run
+    become_enabled: true
+    timeout: 1800
+    forks: 1
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
+  - name: TLB | Identity | Validate Least Privilege
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: playbooks/privilege_validate.yml
+    inventory: "{{ tlb_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials:
+      - TLB | Linux SSH
+      - TLB | Junos Automation
+      - TLB | VMware API
+    job_type: run
+    timeout: 900
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
 
 controller_workflows:
   - name: TLB | Lab | Validate
@@ -216,6 +352,101 @@ controller_workflows:
       - identifier: pnetlab_discovery
         unified_job_template: TLB | PNETLab | Discover
         lookup_organization: "{{ tlb_organization_name }}"
+  - name: TLB | Linux | Governed Security Maintenance
+    organization: "{{ tlb_organization_name }}"
+    description: Audit, approve, serially patch, and verify Linux security updates.
+    destroy_current_nodes: true
+    allow_simultaneous: false
+    workflow_nodes:
+      - identifier: patch_audit_before
+        unified_job_template: TLB | Linux | Patch Audit
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [patch_approval]
+      - identifier: patch_approval
+        approval_node:
+          name: Approve Linux security maintenance
+          description: Confirm backup freshness, maintenance window, and vendor compatibility.
+          timeout: 86400
+        success_nodes: [patch_apply]
+      - identifier: patch_apply
+        unified_job_template: TLB | Linux | Apply Security Updates
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [patch_audit_after]
+      - identifier: patch_audit_after
+        unified_job_template: TLB | Linux | Patch Audit
+        lookup_organization: "{{ tlb_organization_name }}"
+  - name: TLB | Identity | Governed Least Privilege
+    organization: "{{ tlb_organization_name }}"
+    description: Approval-gated migration away from unrestricted device privileges.
+    destroy_current_nodes: true
+    allow_simultaneous: false
+    workflow_nodes:
+      - identifier: privilege_approval
+        approval_node:
+          name: Approve least-privilege migration
+          description: Confirm console break-glass access and current configuration backups.
+          timeout: 86400
+        success_nodes: [linux_privilege]
+      - identifier: linux_privilege
+        unified_job_template: TLB | Linux | Harden Privilege
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [junos_privilege]
+      - identifier: junos_privilege
+        unified_job_template: TLB | Junos | Harden Privilege
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [esxi_privilege]
+      - identifier: esxi_privilege
+        unified_job_template: TLB | ESXi | Harden Privilege
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [privilege_validate]
+      - identifier: privilege_validate
+        unified_job_template: TLB | Identity | Validate Least Privilege
+        lookup_organization: "{{ tlb_organization_name }}"
+  - name: TLB | Time | Governed Remediation
+    organization: "{{ tlb_organization_name }}"
+    description: Approval-gated redundant time-source configuration with post-change validation.
+    destroy_current_nodes: true
+    allow_simultaneous: false
+    workflow_nodes:
+      - identifier: time_approval
+        approval_node:
+          name: Approve cross-platform time remediation
+          description: Confirm backups and impact of correcting materially inaccurate clocks.
+          timeout: 86400
+        success_nodes: [time_remediate]
+      - identifier: time_remediate
+        unified_job_template: TLB | Time | Remediate
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [time_audit]
+      - identifier: time_audit
+        unified_job_template: TLB | Time | Audit
+        lookup_organization: "{{ tlb_organization_name }}"
+
+controller_schedules:
+  - name: TLB | Linux | Patch Audit | Daily 06:00 ET
+    description: Daily non-privileged Linux security update compliance audit.
+    unified_job_template: TLB | Linux | Patch Audit
+    organization: "{{ tlb_organization_name }}"
+    rrule: "DTSTART;TZID=America/New_York:20260814T060000 RRULE:FREQ=DAILY;INTERVAL=1"
+    enabled: true
+  - name: TLB | Linux | Governed Maintenance | Sunday 03:00 ET
+    description: Weekly workflow requiring explicit approval before security updates.
+    unified_job_template: TLB | Linux | Governed Security Maintenance
+    organization: "{{ tlb_organization_name }}"
+    rrule: "DTSTART;TZID=America/New_York:20260816T030000 RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SU"
+    enabled: true
+  - name: TLB | Time | Audit | Every 6 Hours
+    description: Cross-platform time-source and synchronization compliance audit.
+    unified_job_template: TLB | Time | Audit
+    organization: "{{ tlb_organization_name }}"
+    rrule: "DTSTART:20260814T000000Z RRULE:FREQ=HOURLY;INTERVAL=6"
+    enabled: true
+  - name: TLB | ESXi License Recovery | Daily 00:00 ET
+    description: Disabled legacy SSH Administrator workflow pending API least-privilege replacement.
+    unified_job_template: TLB | ESXi License Recovery
+    organization: "{{ tlb_organization_name }}"
+    rrule: "DTSTART;TZID=America/New_York:20260814T000000 RRULE:FREQ=DAILY;INTERVAL=1"
+    enabled: false
 
 gateway_role_team_assignments:
   - team: TLB-AAP-Admins

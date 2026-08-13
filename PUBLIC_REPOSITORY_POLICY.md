@@ -1,6 +1,6 @@
 # Public Repository Content Policy
 
-	echlittlebrawta-lab is public.
+`techlittlebrawta-lab` is public.
 
 This repository is intended for **lab organization, metadata, documentation, configuration examples, and automation that Tech Little Brawta has the right to distribute**.
 
