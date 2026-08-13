@@ -4,12 +4,12 @@
   connection: local
   gather_facts: false
   vars:
-    repository_root: "{{ playbook_dir | dirname }}"
+    repository_root: "{{ playbook_dir | dirname | dirname }}"
 
   tasks:
     - name: Find playbooks for syntax validation
       ansible.builtin.find:
-        paths: "{{ repository_root }}/playbooks"
+        paths: "{{ repository_root }}/automation/playbooks"
         patterns: "*.yml"
         recurse: true
         file_type: file

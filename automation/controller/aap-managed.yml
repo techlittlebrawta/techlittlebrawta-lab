@@ -137,7 +137,7 @@ controller_templates:
   - name: TLB | Repository | Validate
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/repository_validate.yml
+    playbook: automation/playbooks/repository_validate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     job_type: run
@@ -145,7 +145,7 @@ controller_templates:
   - name: TLB | Lab | Preflight
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/preflight.yml
+    playbook: automation/playbooks/preflight.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     limit: aap_control_plane:linux_managed:virtualization:juniper
@@ -154,7 +154,7 @@ controller_templates:
   - name: TLB | Linux | Gather Facts
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/linux_facts.yml
+    playbook: automation/playbooks/linux_facts.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -164,7 +164,7 @@ controller_templates:
   - name: TLB | Linux | Patch Audit
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/linux_patch_audit.yml
+    playbook: automation/playbooks/linux_patch_audit.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -177,7 +177,7 @@ controller_templates:
   - name: TLB | Linux | Apply Security Updates
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/linux_patch_apply.yml
+    playbook: automation/playbooks/linux_patch_apply.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -191,7 +191,7 @@ controller_templates:
   - name: TLB | Linux | Harden Privilege
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/linux_privilege_harden.yml
+    playbook: automation/playbooks/linux_privilege_harden.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -206,7 +206,7 @@ controller_templates:
   - name: TLB | Identity | Validate Linux
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/automation_identity_validate.yml
+    playbook: automation/playbooks/automation_identity_validate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -216,7 +216,7 @@ controller_templates:
   - name: TLB | Junos | Gather Facts
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/junos_facts.yml
+    playbook: automation/playbooks/junos_facts.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Junos NETCONF]
@@ -226,7 +226,7 @@ controller_templates:
   - name: TLB | Junos | Harden Privilege
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/junos_privilege_harden.yml
+    playbook: automation/playbooks/junos_privilege_harden.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Junos NETCONF]
@@ -239,7 +239,7 @@ controller_templates:
   - name: TLB | VMware | Discover
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/vmware_discovery.yml
+    playbook: automation/playbooks/vmware_discovery.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | VMware API]
@@ -249,7 +249,7 @@ controller_templates:
   - name: TLB | ESXi | Harden Privilege
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/esxi_privilege_harden.yml
+    playbook: automation/playbooks/esxi_privilege_harden.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | VMware API]
@@ -262,7 +262,7 @@ controller_templates:
   - name: TLB | PNETLab | Discover
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/pnetlab_discovery.yml
+    playbook: automation/playbooks/pnetlab_discovery.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -272,7 +272,7 @@ controller_templates:
   - name: TLB | Time | Audit
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/time_audit.yml
+    playbook: automation/playbooks/time_audit.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -285,7 +285,7 @@ controller_templates:
   - name: TLB | Time | Remediate
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/time_remediate.yml
+    playbook: automation/playbooks/time_remediate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -300,7 +300,7 @@ controller_templates:
   - name: TLB | Identity | Validate Least Privilege
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/privilege_validate.yml
+    playbook: automation/playbooks/privilege_validate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
@@ -313,7 +313,7 @@ controller_templates:
   - name: TLB | Time | Audit Junos
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/time_audit.yml
+    playbook: automation/playbooks/time_audit.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Junos NETCONF]
@@ -323,7 +323,7 @@ controller_templates:
   - name: TLB | Time | Audit ESXi
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/time_audit.yml
+    playbook: automation/playbooks/time_audit.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | VMware API]
@@ -333,7 +333,7 @@ controller_templates:
   - name: TLB | Time | Remediate Junos
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/time_remediate.yml
+    playbook: automation/playbooks/time_remediate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Junos NETCONF]
@@ -343,7 +343,7 @@ controller_templates:
   - name: TLB | Time | Remediate ESXi
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/time_remediate.yml
+    playbook: automation/playbooks/time_remediate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | VMware API]
@@ -353,7 +353,7 @@ controller_templates:
   - name: TLB | Identity | Validate Junos Privilege
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/privilege_validate.yml
+    playbook: automation/playbooks/privilege_validate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Junos NETCONF]
@@ -363,7 +363,7 @@ controller_templates:
   - name: TLB | Identity | Validate ESXi Privilege
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
-    playbook: playbooks/privilege_validate.yml
+    playbook: automation/playbooks/privilege_validate.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | VMware API]

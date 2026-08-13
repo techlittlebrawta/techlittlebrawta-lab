@@ -3,15 +3,6 @@ name: Automation quality and security
 
 "on":
   pull_request:
-    paths:
-      - ".github/**"
-      - "aap/**"
-      - "files/**"
-      - "playbooks/**"
-      - "templates/**"
-      - "collections/requirements.yml"
-      - "requirements.txt"
-      - "ansible.cfg"
   push:
     branches: [main]
   workflow_dispatch:
@@ -58,11 +49,11 @@ jobs:
       - name: Run every playbook syntax check
         run: |
           while IFS= read -r playbook; do
-            if [[ "$playbook" == "playbooks/controller_configure.yml" ]]; then
+            if [[ "$playbook" == "automation/playbooks/controller_configure.yml" ]]; then
               continue
             fi
             ansible-playbook --syntax-check "$playbook"
-          done < <(find playbooks -type f -name '*.yml' -print | sort)
+          done < <(find automation/playbooks -type f -name '*.yml' -print | sort)
 
       - name: Explain controller configuration validation boundary
         run: >-

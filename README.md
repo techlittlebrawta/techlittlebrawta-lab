@@ -16,8 +16,8 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting guidance.
 
 AAP-managed devices use the dedicated `tlb-automation` service identity. Built-in administrator accounts are retained only as out-of-band break-glass access and are not attached to TLB automation objects.
 
-See [AUTOMATION_IDENTITY.md](AUTOMATION_IDENTITY.md) for credential boundaries, validation, and rotation controls.
+See [automation identity](automation/docs/automation-identity.md) for credential boundaries, validation, and rotation controls.
 
 ## Operations
 
-Linux security updates, cross-platform time integrity, least privilege, AAP schedules, approvals, recovery gates, and GitHub controls are defined in [OPERATIONS.md](OPERATIONS.md).
+Linux security updates, cross-platform time integrity, least privilege, AAP schedules, approvals, recovery gates, and GitHub controls are defined in [automation operations](automation/docs/operations.md).

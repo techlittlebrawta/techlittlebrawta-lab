@@ -1,5 +1,11 @@
 # Governed infrastructure operations
 
+## Public/private repository synchronization
+
+The public repository is the source of truth for reusable, sanitized automation. The private repository may add operational inventory and private overlays, but must not fork shared files. Shared paths are declared in `.github/lab-sync-manifest.txt`; the private repository validates them byte-for-byte on every relevant pull request, push, and scheduled run.
+
+Never place credentials, private inventory, unredacted configurations, or internal addressing in a manifest-listed path. Changes to shared automation are authored in public first and promoted to private through a reviewed pull request.
+
 ## Control model
 
 Git is the reviewed source of truth; AAP is the only normal execution plane. Job templates pin project, inventory, execution environment, credential, limit, timeout, and playbook. Operators cannot substitute credentials, arbitrary variables, limits, or SCM branches.
