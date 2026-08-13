@@ -1,6 +1,6 @@
 # Managed by AAP from techlittlebrawta-lab. Local edits are overwritten.
 {% for server in tlb_external_ntp_servers %}
-server {{ server.name }} iburst{% if server.nts | default(false) %} nts{% endif %}
+server {{ server.name }} iburst{{ ' nts' if server.nts | default(false) else '' }}
 {% endfor %}
 
 driftfile {{ '/var/lib/chrony/drift' if ansible_os_family == 'RedHat' else '/var/lib/chrony/chrony.drift' }}
