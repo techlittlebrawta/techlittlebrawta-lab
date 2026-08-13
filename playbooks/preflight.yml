@@ -1,0 +1,24 @@
+---
+- name: Validate management-plane TCP reachability from the execution node
+  hosts: all
+  gather_facts: false
+  strategy: linear
+
+  tasks:
+    - name: Require AAP-managed endpoint data
+      ansible.builtin.assert:
+        that:
+          - ansible_host is defined
+          - tlb_preflight_port is defined
+        fail_msg: Live endpoint data must be stored on this host in the AAP inventory.
+
+    - name: Check management endpoint
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ tlb_preflight_port | int }}"
+        connect_timeout: 5
+        timeout: 10
+        state: started
+      delegate_to: localhost
+      connection: local
+      changed_when: false
