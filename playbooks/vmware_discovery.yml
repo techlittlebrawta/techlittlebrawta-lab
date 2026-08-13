@@ -23,6 +23,21 @@
         validate_certs: "{{ vmware_validate_certs }}"
       no_log: true
 
+    - name: Read standalone ESXi role definitions
+      community.vmware.vmware_local_role_info:
+        hostname: "{{ ansible_host }}"
+        username: "{{ lookup('env', 'VMWARE_USER') }}"
+        password: "{{ lookup('env', 'VMWARE_PASSWORD') }}"
+        validate_certs: "{{ vmware_validate_certs }}"
+      register: tlb_esxi_roles
+      no_log: true
+
     - name: Confirm VMware API discovery completed
       ansible.builtin.debug:
-        msg: "VMware API discovery completed for {{ inventory_hostname }}."
+        msg:
+          status: "VMware API discovery completed for {{ inventory_hostname }}."
+          role_names: "{{ tlb_esxi_roles.local_role_info | map(attribute='role_name') | list }}"
+          admin_privileges: >-
+            {{ (tlb_esxi_roles.local_role_info
+                | selectattr('role_name', 'equalto', 'Admin')
+                | map(attribute='privileges') | first | default([])) }}
