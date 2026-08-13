@@ -27,7 +27,7 @@
     - name: Assign the constrained role to the automation identity
       community.vmware.vmware_object_role_permission:
         hostname: "{{ ansible_host }}"
-        object_name: ha-folder-root
+        object_name: rootFolder
         object_type: Folder
         principal: tlb-automation
         role: "{{ tlb_esxi_role_name }}"
