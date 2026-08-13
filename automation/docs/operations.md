@@ -2,7 +2,7 @@
 
 ## Public/private repository synchronization
 
-The public repository is the source of truth for reusable, sanitized automation. The private repository may add operational inventory and private overlays, but must not fork shared files. Shared paths are declared in `.github/lab-sync-manifest.txt`; the private repository validates them byte-for-byte on every relevant pull request, push, and scheduled run.
+The public repository is the source of truth for reusable, sanitized automation. The private repository may add operational inventory, private overlays, and repository-specific CI policy, but must not fork declared shared files. Shared paths are declared in `.github/lab-sync-manifest.txt`; the private repository validates them byte-for-byte on every relevant pull request, push, and scheduled run.
 
 Never place credentials, private inventory, unredacted configurations, or internal addressing in a manifest-listed path. Changes to shared automation are authored in public first and promoted to private through a reviewed pull request.
 

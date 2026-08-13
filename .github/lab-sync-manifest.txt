@@ -2,7 +2,6 @@
 # every path listed here must remain byte-for-byte identical in both repos.
 .github/dependabot.yml
 .github/lab-sync-manifest.txt
-.github/workflows/automation-quality.yml
 bindep.txt
 collections/requirements.yml
 execution-environment.yml
