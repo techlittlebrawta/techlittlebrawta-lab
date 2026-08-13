@@ -2,13 +2,18 @@
 - name: Replace unrestricted Linux sudo with a fixed maintenance interface
   hosts: aap_control_plane:linux_managed
   gather_facts: true
-  become: true
+  become: false
   serial: 1
   any_errors_fatal: true
   vars:
     tlb_repository_root: "{{ playbook_dir | dirname }}"
 
   pre_tasks:
+    - name: Detect an existing least-privilege policy
+      ansible.builtin.stat:
+        path: /etc/sudoers.d/tlb-automation
+      register: tlb_sudo_policy
+
     - name: Read the unelevated login UID
       ansible.builtin.command: id -u
       become: false
@@ -32,44 +37,49 @@
           {{ lookup('ansible.builtin.template',
           tlb_repository_root ~ '/templates/tlb-automation.sudoers.j2') }}
       changed_when: false
+      when: not tlb_sudo_policy.stat.exists
 
   tasks:
-    - name: Install chrony before privilege reduction
-      ansible.builtin.package:
-        name: chrony
-        state: present
+    - name: Bootstrap the fixed privilege boundary once
+      become: true
+      when: not tlb_sudo_policy.stat.exists
+      block:
+        - name: Install chrony before privilege reduction
+          ansible.builtin.package:
+            name: chrony
+            state: present
 
-    - name: Install the approved Ubuntu security-update mechanism
-      ansible.builtin.package:
-        name: unattended-upgrades
-        state: present
-      when: ansible_os_family == "Debian"
+        - name: Install the approved Ubuntu security-update mechanism
+          ansible.builtin.package:
+            name: unattended-upgrades
+            state: present
+          when: ansible_os_family == "Debian"
 
-    - name: Install the approved chrony policy before privilege reduction
-      ansible.builtin.template:
-        src: "{{ tlb_repository_root }}/templates/chrony.conf.j2"
-        dest: "{{ '/etc/chrony.conf' if ansible_os_family == 'RedHat' else '/etc/chrony/chrony.conf' }}"
-        owner: root
-        group: root
-        mode: "0644"
-        backup: true
+        - name: Install the approved chrony policy before privilege reduction
+          ansible.builtin.template:
+            src: "{{ tlb_repository_root }}/templates/chrony.conf.j2"
+            dest: "{{ '/etc/chrony.conf' if ansible_os_family == 'RedHat' else '/etc/chrony/chrony.conf' }}"
+            owner: root
+            group: root
+            mode: "0644"
+            backup: true
 
-    - name: Install the immutable maintenance command interface
-      ansible.builtin.copy:
-        src: "{{ tlb_repository_root }}/files/tlb-linux-maintenance"
-        dest: /usr/local/sbin/tlb-linux-maintenance
-        owner: root
-        group: root
-        mode: "0755"
+        - name: Install the immutable maintenance command interface
+          ansible.builtin.copy:
+            src: "{{ tlb_repository_root }}/files/tlb-linux-maintenance"
+            dest: /usr/local/sbin/tlb-linux-maintenance
+            owner: root
+            group: root
+            mode: "0755"
 
-    - name: Install the least-privilege sudo policy atomically
-      ansible.builtin.template:
-        src: "{{ tlb_repository_root }}/templates/tlb-automation.sudoers.j2"
-        dest: /etc/sudoers.d/tlb-automation
-        owner: root
-        group: root
-        mode: "0440"
-        validate: /usr/sbin/visudo -cf %s
+        - name: Install the least-privilege sudo policy atomically
+          ansible.builtin.template:
+            src: "{{ tlb_repository_root }}/templates/tlb-automation.sudoers.j2"
+            dest: /etc/sudoers.d/tlb-automation
+            owner: root
+            group: root
+            mode: "0440"
+            validate: /usr/sbin/visudo -cf %s
 
     - name: Restart the approved time service
       ansible.builtin.command: >-
