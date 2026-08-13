@@ -37,6 +37,8 @@
       ansible.builtin.command:
         argv:
           - ansible-playbook
+          - -i
+          - localhost,
           - --syntax-check
           - "{{ item.path }}"
         chdir: "{{ repository_root }}"
