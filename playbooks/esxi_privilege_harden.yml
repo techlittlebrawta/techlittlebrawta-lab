@@ -17,8 +17,8 @@
           - System.Anonymous
           - System.Read
           - System.View
-          - Host.Config.Settings
-          - Host.Config.Service
+          - Host.Config.DateTime
+          - Host.Config.NetService
           - Global.Licenses
         action: set
         state: present
