@@ -1,0 +1,28 @@
+---
+- name: Safely discover standalone ESXi facts
+  hosts: virtualization
+  gather_facts: false
+  connection: local
+  vars:
+    vmware_validate_certs: "{{ lookup('env', 'VMWARE_VALIDATE_CERTS') | default('false', true) | bool }}"
+
+  tasks:
+    - name: Require VMware credential injection
+      ansible.builtin.assert:
+        that:
+          - lookup('env', 'VMWARE_USER') | length > 0
+          - lookup('env', 'VMWARE_PASSWORD') | length > 0
+        fail_msg: Attach the TLB VMware API credential to this job template.
+      no_log: true
+
+    - name: Gather standalone ESXi host facts
+      community.vmware.vmware_host_facts:
+        hostname: "{{ ansible_host }}"
+        username: "{{ lookup('env', 'VMWARE_USER') }}"
+        password: "{{ lookup('env', 'VMWARE_PASSWORD') }}"
+        validate_certs: "{{ vmware_validate_certs }}"
+      no_log: true
+
+    - name: Confirm VMware API discovery completed
+      ansible.builtin.debug:
+        msg: "VMware API discovery completed for {{ inventory_hostname }}."
