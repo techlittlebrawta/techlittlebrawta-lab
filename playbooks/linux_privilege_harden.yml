@@ -16,6 +16,22 @@
       changed_when: false
       failed_when: false
 
+    - name: Calculate the installed maintenance-interface checksum
+      ansible.builtin.stat:
+        path: /usr/local/sbin/tlb-linux-maintenance
+        checksum_algorithm: sha256
+      register: tlb_helper_stat
+
+    - name: Decide whether the privileged bootstrap requires controlled recovery
+      ansible.builtin.set_fact:
+        tlb_bootstrap_required: >-
+          {{ tlb_policy_check.rc != 0
+             or not tlb_helper_stat.stat.exists
+             or tlb_helper_stat.stat.checksum
+                != (lookup('ansible.builtin.file',
+                    tlb_repository_root ~ '/files/tlb-linux-maintenance')
+                    | hash('sha256')) }}
+
     - name: Read the unelevated login UID
       ansible.builtin.command: id -u
       become: false
@@ -39,12 +55,12 @@
           {{ lookup('ansible.builtin.template',
           tlb_repository_root ~ '/templates/tlb-automation.sudoers.j2') }}
       changed_when: false
-      when: tlb_policy_check.rc != 0
+      when: tlb_bootstrap_required | bool
 
   tasks:
     - name: Bootstrap the fixed privilege boundary once
       become: true
-      when: tlb_policy_check.rc != 0
+      when: tlb_bootstrap_required | bool
       block:
         - name: Install chrony before privilege reduction
           ansible.builtin.package:
