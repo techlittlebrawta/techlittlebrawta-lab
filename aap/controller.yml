@@ -97,10 +97,10 @@ controller_credentials:
     organization: "{{ tlb_organization_name }}"
     credential_type: Machine
     description: Dedicated tlb-automation SSH identity for audited ESXi maintenance.
-  - name: TLB | Junos Automation
+  - name: TLB | Junos NETCONF
     organization: "{{ tlb_organization_name }}"
-    credential_type: Network
-    description: Dedicated tlb-automation NETCONF and SSH identity for Junos.
+    credential_type: Machine
+    description: Dedicated tlb-automation SSH credential used by the NETCONF connection plugin.
   - name: TLB | VMware API
     organization: "{{ tlb_organization_name }}"
     credential_type: VMware vCenter
@@ -223,7 +223,7 @@ controller_templates:
     playbook: playbooks/junos_facts.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
-    credentials: [TLB | Junos Automation]
+    credentials: [TLB | Junos NETCONF]
     limit: juniper
     job_type: run
     timeout: 300
@@ -233,7 +233,7 @@ controller_templates:
     playbook: playbooks/junos_privilege_harden.yml
     inventory: "{{ tlb_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
-    credentials: [TLB | Junos Automation]
+    credentials: [TLB | Junos NETCONF]
     limit: juniper
     job_type: run
     timeout: 600
@@ -281,7 +281,7 @@ controller_templates:
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials:
       - TLB | Linux SSH
-      - TLB | Junos Automation
+      - TLB | Junos NETCONF
       - TLB | VMware API
     job_type: run
     timeout: 900
@@ -296,7 +296,7 @@ controller_templates:
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials:
       - TLB | Linux SSH
-      - TLB | Junos Automation
+      - TLB | Junos NETCONF
       - TLB | VMware API
     job_type: run
     become_enabled: true
@@ -313,7 +313,7 @@ controller_templates:
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials:
       - TLB | Linux SSH
-      - TLB | Junos Automation
+      - TLB | Junos NETCONF
       - TLB | VMware API
     job_type: run
     timeout: 900
