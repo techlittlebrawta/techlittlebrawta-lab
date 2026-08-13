@@ -1,0 +1,63 @@
+---
+- name: Validate repository automation source
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    repository_root: "{{ playbook_dir | dirname }}"
+
+  tasks:
+    - name: Find playbooks for syntax validation
+      ansible.builtin.find:
+        paths: "{{ repository_root }}/playbooks"
+        patterns: "*.yml"
+        recurse: true
+        file_type: file
+      register: validation_playbooks
+
+    - name: Validate all YAML
+      ansible.builtin.command:
+        argv:
+          - yamllint
+          - .
+        chdir: "{{ repository_root }}"
+      changed_when: false
+
+    - name: Run ansible-lint
+      ansible.builtin.command:
+        argv:
+          - ansible-lint
+          - --strict
+          - --offline
+          - .
+        chdir: "{{ repository_root }}"
+      changed_when: false
+
+    - name: Run Ansible syntax checks
+      ansible.builtin.command:
+        argv:
+          - ansible-playbook
+          - --syntax-check
+          - "{{ item.path }}"
+        chdir: "{{ repository_root }}"
+      environment:
+        ANSIBLE_CONFIG: "{{ repository_root }}/ansible.cfg"
+      loop: "{{ validation_playbooks.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      changed_when: false
+
+    - name: Load collections requirements
+      ansible.builtin.include_vars:
+        file: "{{ repository_root }}/collections/requirements.yml"
+        name: galaxy_requirements
+
+    - name: Assert collections requirements are usable
+      ansible.builtin.assert:
+        that:
+          - galaxy_requirements.collections is sequence
+          - galaxy_requirements.collections | length > 0
+          - >-
+            galaxy_requirements.collections | map(attribute='name') | list | length
+            == galaxy_requirements.collections | length
+        fail_msg: collections/requirements.yml must contain named collections.
