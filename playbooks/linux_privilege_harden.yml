@@ -1,0 +1,90 @@
+---
+- name: Replace unrestricted Linux sudo with a fixed maintenance interface
+  hosts: aap_control_plane:linux_managed
+  gather_facts: true
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  vars:
+    tlb_repository_root: "{{ playbook_dir | dirname }}"
+
+  pre_tasks:
+    - name: Read the unelevated login UID
+      ansible.builtin.command: id -u
+      become: false
+      register: tlb_login_uid
+      changed_when: false
+
+    - name: Require the dedicated non-root identity
+      ansible.builtin.assert:
+        that:
+          - ansible_user == "tlb-automation"
+          - tlb_login_uid.stdout | trim != "0"
+        fail_msg: Refusing to alter privilege for an unexpected login identity.
+
+    - name: Validate the proposed sudoers policy before installation
+      ansible.builtin.command:
+        argv:
+          - visudo
+          - -cf
+          - /dev/stdin
+        stdin: >-
+          {{ lookup('ansible.builtin.template',
+          tlb_repository_root ~ '/templates/tlb-automation.sudoers.j2') }}
+      changed_when: false
+
+  tasks:
+    - name: Install chrony before privilege reduction
+      ansible.builtin.package:
+        name: chrony
+        state: present
+
+    - name: Install the approved Ubuntu security-update mechanism
+      ansible.builtin.package:
+        name: unattended-upgrades
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install the approved chrony policy before privilege reduction
+      ansible.builtin.template:
+        src: "{{ tlb_repository_root }}/templates/chrony.conf.j2"
+        dest: "{{ '/etc/chrony.conf' if ansible_os_family == 'RedHat' else '/etc/chrony/chrony.conf' }}"
+        owner: root
+        group: root
+        mode: "0644"
+        backup: true
+
+    - name: Install the immutable maintenance command interface
+      ansible.builtin.copy:
+        src: "{{ tlb_repository_root }}/files/tlb-linux-maintenance"
+        dest: /usr/local/sbin/tlb-linux-maintenance
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install the least-privilege sudo policy atomically
+      ansible.builtin.template:
+        src: "{{ tlb_repository_root }}/templates/tlb-automation.sudoers.j2"
+        dest: /etc/sudoers.d/tlb-automation
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Restart the approved time service
+      ansible.builtin.service:
+        name: "{{ 'chronyd' if ansible_os_family == 'RedHat' else 'chrony' }}"
+        state: restarted
+        enabled: true
+
+    - name: Validate the replacement path without unrestricted sudo
+      ansible.builtin.command: sudo -n /usr/local/sbin/tlb-linux-maintenance validate
+      become: false
+      changed_when: false
+
+    - name: Prove arbitrary passwordless root commands are denied
+      ansible.builtin.command: sudo -n /usr/bin/id -u
+      become: false
+      register: tlb_arbitrary_sudo
+      changed_when: false
+      failed_when: tlb_arbitrary_sudo.rc == 0

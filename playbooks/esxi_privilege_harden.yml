@@ -1,0 +1,43 @@
+---
+- name: Replace ESXi Administrator with a narrow automation role
+  hosts: virtualization
+  gather_facts: false
+  connection: local
+  any_errors_fatal: true
+
+  vars:
+    tlb_esxi_role_name: TLB Automation Time Operator
+
+  tasks:
+    - name: Create the least-privilege ESXi role
+      community.vmware.vmware_local_role_manager:
+        hostname: "{{ ansible_host }}"
+        local_role_name: "{{ tlb_esxi_role_name }}"
+        local_privilege_ids:
+          - System.Anonymous
+          - System.Read
+          - System.View
+          - Host.Config.Settings
+          - Host.Config.Service
+          - Global.Licenses
+        action: set
+        state: present
+        validate_certs: "{{ tlb_vmware_validate_certs | default(true) }}"
+
+    - name: Assign the constrained role to the automation identity
+      community.vmware.vmware_object_role_permission:
+        hostname: "{{ ansible_host }}"
+        object_name: ha-folder-root
+        object_type: Folder
+        principal: tlb-automation
+        role: "{{ tlb_esxi_role_name }}"
+        recursive: true
+        state: present
+        validate_certs: "{{ tlb_vmware_validate_certs | default(true) }}"
+
+    - name: Validate the new role can read NTP configuration
+      community.vmware.vmware_host_ntp_info:
+        hostname: "{{ ansible_host }}"
+        esxi_hostname: "{{ ansible_host }}"
+        validate_certs: "{{ tlb_vmware_validate_certs | default(true) }}"
+      changed_when: false

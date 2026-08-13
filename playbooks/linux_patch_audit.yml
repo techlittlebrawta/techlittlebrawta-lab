@@ -1,0 +1,71 @@
+---
+- name: Audit Linux security-update compliance without elevation
+  hosts: aap_control_plane:linux_managed
+  gather_facts: true
+  become: false
+  serial: 1
+
+  tasks:
+    - name: Read Red Hat security advisory summary
+      ansible.builtin.command: dnf -q updateinfo summary
+      register: tlb_rpm_updateinfo
+      changed_when: false
+      failed_when: false
+      when: ansible_os_family == "RedHat"
+
+    - name: List Red Hat security updates
+      ansible.builtin.command: dnf -q updateinfo list --updates --security
+      register: tlb_rpm_security_updates
+      changed_when: false
+      failed_when: false
+      when: ansible_os_family == "RedHat"
+
+    - name: Read Debian and Ubuntu package-cache age
+      ansible.builtin.stat:
+        path: /var/lib/apt/lists
+      register: tlb_apt_metadata
+      changed_when: false
+      when: ansible_os_family == "Debian"
+
+    - name: Read Ubuntu Pro security status
+      ansible.builtin.command: pro security-status --format json
+      register: tlb_ubuntu_security
+      changed_when: false
+      failed_when: false
+      when: ansible_distribution == "Ubuntu"
+
+    - name: List Debian and Ubuntu available updates
+      ansible.builtin.command: apt list --upgradable
+      register: tlb_apt_updates
+      changed_when: false
+      failed_when: false
+      when: ansible_os_family == "Debian"
+
+    - name: Check whether a reboot is required
+      ansible.builtin.command: sudo -n /usr/local/sbin/tlb-linux-maintenance reboot-required
+      register: tlb_reboot_required
+      changed_when: false
+      failed_when: tlb_reboot_required.rc not in [0, 10]
+
+    - name: Publish the host patch-compliance summary
+      ansible.builtin.debug:
+        msg:
+          host: "{{ inventory_hostname }}"
+          distribution: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+          kernel: "{{ ansible_kernel }}"
+          policy: "{{ tlb_patch_policy | default('security') }}"
+          remediation_enabled: "{{ tlb_patch_remediation_enabled | default(false) | bool }}"
+          rpm_security_lines: >-
+            {{ tlb_rpm_security_updates.stdout_lines | default([])
+               | select('search', 'RHSA-') | list | length }}
+          apt_upgradable_lines: >-
+            {{ tlb_apt_updates.stdout_lines | default([])
+               | reject('match', '^(Listing|$)') | list | length }}
+          ubuntu_pro_security_status_available: "{{ tlb_ubuntu_security.rc | default(1) == 0 }}"
+          reboot_required: "{{ tlb_reboot_required.rc == 10 }}"
+
+    - name: Enforce the maximum security-update age policy
+      ansible.builtin.assert:
+        that:
+          - tlb_patch_max_age_days | default(30) | int <= 30
+        fail_msg: The inventory patch SLA exceeds the 30-day maximum.

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly PATH=/usr/sbin:/usr/bin:/sbin:/bin
+readonly LOCK_FILE=/run/lock/tlb-linux-maintenance.lock
+
+exec 9>"${LOCK_FILE}"
+flock -n 9 || { echo "another maintenance operation is running" >&2; exit 75; }
+
+log() {
+  logger --tag tlb-linux-maintenance -- "$*"
+  printf '%s\n' "$*"
+}
+
+require_root() {
+  [[ ${EUID} -eq 0 ]] || { echo "must run as root" >&2; exit 77; }
+}
+
+patch_security() {
+  require_root
+  if command -v dnf >/dev/null 2>&1; then
+    log "starting RPM security update"
+    dnf --assumeyes --refresh upgrade --security
+  elif command -v unattended-upgrade >/dev/null 2>&1; then
+    log "starting Debian/Ubuntu security update"
+    apt-get update
+    unattended-upgrade --verbose
+  else
+    echo "no approved security-only package mechanism is installed" >&2
+    exit 69
+  fi
+  log "security update completed"
+}
+
+time_remediate() {
+  require_root
+  timedatectl set-timezone UTC
+  timedatectl set-ntp true
+  if systemctl list-unit-files chronyd.service >/dev/null 2>&1; then
+    systemctl enable --now chronyd.service
+  elif systemctl list-unit-files chrony.service >/dev/null 2>&1; then
+    systemctl enable --now chrony.service
+  else
+    echo "chrony service is not installed" >&2
+    exit 69
+  fi
+  chronyc online
+  chronyc makestep
+  log "time synchronization remediation completed"
+}
+
+reboot_required() {
+  if command -v dnf >/dev/null 2>&1 && command -v needs-restarting >/dev/null 2>&1; then
+    needs-restarting -r >/dev/null 2>&1 || exit 10
+  elif [[ -f /var/run/reboot-required ]]; then
+    exit 10
+  fi
+}
+
+validate() {
+  require_root
+  [[ -x /usr/local/sbin/tlb-linux-maintenance ]]
+  visudo -cf /etc/sudoers.d/tlb-automation
+  log "least-privilege maintenance control validated"
+}
+
+case "${1:-}" in
+  patch-security) patch_security ;;
+  time-remediate) time_remediate ;;
+  reboot-required) reboot_required ;;
+  validate) validate ;;
+  *)
+    echo "usage: $0 {patch-security|time-remediate|reboot-required|validate}" >&2
+    exit 64
+    ;;
+esac

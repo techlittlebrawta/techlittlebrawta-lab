@@ -1,0 +1,55 @@
+---
+- name: Configure redundant Linux time sources and restricted NTP service
+  hosts: aap_control_plane:linux_managed
+  gather_facts: false
+  become: false
+  serial: 1
+  any_errors_fatal: true
+
+  tasks:
+    - name: Correct the clock and service state through the fixed interface
+      ansible.builtin.command: sudo -n /usr/local/sbin/tlb-linux-maintenance time-remediate
+      changed_when: true
+
+- name: Configure Junos with reachable, redundant internal NTP sources
+  hosts: juniper
+  gather_facts: false
+  connection: ansible.netcommon.netconf
+
+  tasks:
+    - name: Commit the NTP configuration with automatic rollback protection
+      junipernetworks.junos.junos_config:
+        lines: "{{ tlb_internal_ntp_servers | map('regex_replace', '^(.*)$', 'set system ntp server \\1') | list }}"
+        comment: "AAP time compliance {{ tower_job_id | default('manual') }}"
+        confirm: 5
+
+    - name: Verify the new Junos configuration remains reachable
+      junipernetworks.junos.junos_command:
+        commands: show system uptime
+      changed_when: false
+
+    - name: Confirm the protected Junos commit
+      junipernetworks.junos.junos_config:
+        confirm_commit: true
+
+- name: Configure and start ESXi NTP
+  hosts: virtualization
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Configure approved ESXi NTP sources
+      community.vmware.vmware_host_ntp:
+        hostname: "{{ ansible_host }}"
+        esxi_hostname: "{{ ansible_host }}"
+        ntp_servers: "{{ tlb_internal_ntp_servers }}"
+        validate_certs: "{{ tlb_vmware_validate_certs | default(true) }}"
+
+    - name: Enable and start the ESXi NTP service
+      community.vmware.vmware_host_service_manager:
+        hostname: "{{ ansible_host }}"
+        esxi_hostname: "{{ ansible_host }}"
+        service_name: ntpd
+        service_policy: "on"
+        state: start
+        validate_certs: "{{ tlb_vmware_validate_certs | default(true) }}"

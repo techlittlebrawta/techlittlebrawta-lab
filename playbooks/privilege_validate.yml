@@ -1,0 +1,47 @@
+---
+- name: Validate Linux least privilege
+  hosts: aap_control_plane:linux_managed
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Validate the approved maintenance command
+      ansible.builtin.command: sudo -n /usr/local/sbin/tlb-linux-maintenance validate
+      changed_when: false
+
+    - name: Verify arbitrary passwordless sudo is denied
+      ansible.builtin.command: sudo -n /usr/bin/id -u
+      register: tlb_linux_arbitrary_sudo
+      changed_when: false
+      failed_when: tlb_linux_arbitrary_sudo.rc == 0
+
+- name: Validate Junos constrained access
+  hosts: juniper
+  gather_facts: false
+  connection: ansible.netcommon.netconf
+
+  tasks:
+    - name: Verify operational read access
+      junipernetworks.junos.junos_command:
+        commands: show cli authorization
+      register: tlb_junos_authorization
+      changed_when: false
+
+    - name: Require the constrained class and reject super-user
+      ansible.builtin.assert:
+        that:
+          - "'tlb-aap-operator' in tlb_junos_authorization.stdout[0]"
+          - "'super-user' not in tlb_junos_authorization.stdout[0]"
+
+- name: Validate ESXi constrained access
+  hosts: virtualization
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Verify API read access remains available
+      community.vmware.vmware_host_ntp_info:
+        hostname: "{{ ansible_host }}"
+        esxi_hostname: "{{ ansible_host }}"
+        validate_certs: "{{ tlb_vmware_validate_certs | default(true) }}"
+      changed_when: false

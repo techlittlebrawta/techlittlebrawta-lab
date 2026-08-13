@@ -1,0 +1,76 @@
+---
+- name: Audit Linux time synchronization without elevation
+  hosts: aap_control_plane:linux_managed
+  gather_facts: false
+  become: false
+
+  tasks:
+    - name: Read timedatectl synchronization state
+      ansible.builtin.command: timedatectl show --property=Timezone --property=NTPSynchronized --property=NTP --value
+      register: tlb_linux_timedatectl
+      changed_when: false
+
+    - name: Read chrony tracking state
+      ansible.builtin.command: chronyc -c tracking
+      register: tlb_linux_chrony
+      changed_when: false
+      failed_when: false
+
+    - name: Require Linux time synchronization and UTC
+      ansible.builtin.assert:
+        that:
+          - "'UTC' in tlb_linux_timedatectl.stdout_lines"
+          - "'yes' in (tlb_linux_timedatectl.stdout_lines | map('lower') | list)"
+          - tlb_linux_chrony.rc == 0
+        fail_msg: Linux time is not synchronized through the approved chrony policy.
+
+- name: Audit Junos time synchronization
+  hosts: juniper
+  gather_facts: false
+  connection: ansible.netcommon.netconf
+
+  tasks:
+    - name: Read Junos NTP state
+      junipernetworks.junos.junos_command:
+        commands:
+          - show ntp status
+          - show ntp associations
+        display: text
+      register: tlb_junos_ntp
+
+    - name: Require a synchronized Junos NTP peer
+      ansible.builtin.assert:
+        that:
+          - tlb_junos_ntp.stdout[0] is regex('(?m)^synchronised to NTP server')
+          - "'*' in tlb_junos_ntp.stdout[1]"
+        fail_msg: Junos has no selected, synchronized NTP peer.
+
+- name: Audit ESXi time synchronization
+  hosts: virtualization
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Read ESXi NTP configuration
+      community.vmware.vmware_host_ntp_info:
+        hostname: "{{ ansible_host }}"
+        esxi_hostname: "{{ ansible_host }}"
+        validate_certs: "{{ tlb_vmware_validate_certs | default(true) }}"
+      register: tlb_esxi_ntp
+
+    - name: Require both approved internal time sources
+      ansible.builtin.assert:
+        that:
+          - >-
+            (tlb_internal_ntp_servers
+            | difference(tlb_esxi_ntp.hosts_ntp_info[ansible_host][0].ntp_servers))
+            | length == 0
+        fail_msg: ESXi does not have every approved internal NTP source configured.
+
+- name: Report a single cross-platform time-compliance result
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Confirm the audit completed
+      ansible.builtin.debug:
+        msg: All managed platforms passed the configured time-source audit.
