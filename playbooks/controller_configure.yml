@@ -1,25 +1,20 @@
 ---
-- name: Reconcile Tech Little Brawta objects in Automation Controller
+- name: Reconcile scoped Tech Little Brawta objects in Automation Controller
   hosts: localhost
   connection: local
   gather_facts: false
   vars_files:
     - ../aap/controller.yml
   vars:
-    controller_hostname: "{{ lookup('env', 'CONTROLLER_HOST') }}"
-    controller_oauthtoken: "{{ lookup('env', 'CONTROLLER_OAUTH_TOKEN') }}"
-    controller_validate_certs: true
-    controller_configuration_secure_logging: true
-    # Organization/team/RBAC bootstrap requires a separately authorized
-    # Organization Editor. Routine reconciliation stays resource-scoped.
-    tlb_reconcile_identity_boundary: false
+    aap_hostname: "{{ lookup('env', 'CONTROLLER_HOST') }}"
+    aap_token: "{{ lookup('env', 'CONTROLLER_OAUTH_TOKEN') }}"
 
   pre_tasks:
-    - name: Require controller authentication, endpoint data, and a published EE image
+    - name: Require scoped controller authentication and live deployment data
       ansible.builtin.assert:
         that:
-          - controller_hostname | length > 0
-          - controller_oauthtoken | length > 0
+          - aap_hostname | length > 0
+          - aap_token | length > 0
           - tlb_aap_ip is defined and tlb_aap_ip | length > 0
           - tlb_pnetlab_ip is defined and tlb_pnetlab_ip | length > 0
           - tlb_esxi_ip is defined and tlb_esxi_ip | length > 0
@@ -30,65 +25,33 @@
       no_log: true
 
   tasks:
-    - name: Reconcile organizations
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.organizations
-      when: tlb_reconcile_identity_boundary | bool
+    - name: Reconcile resource-scoped controller configuration with bearer authentication
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ playbook_dir }}/../tools/aap_reconcile.py"
+        stdin: >-
+          {{ {
+            'inventories': controller_inventories,
+            'hosts': controller_hosts,
+            'groups': controller_groups,
+            'credentials': controller_credentials,
+            'execution_environments': controller_execution_environments,
+            'projects': controller_projects,
+            'templates': controller_templates,
+            'workflows': controller_workflows,
+            'schedules': controller_schedules
+          } | to_json }}
+      environment:
+        CONTROLLER_HOST: "{{ aap_hostname }}"
+        CONTROLLER_OAUTH_TOKEN: "{{ aap_token }}"
+        AAP_VALIDATE_CERTS: "{{ lookup('env', 'AAP_VALIDATE_CERTS') | default('true', true) }}"
+      register: controller_reconcile
+      changed_when: (controller_reconcile.stdout | from_json).changed
+      no_log: true
 
-    - name: Reconcile teams
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.teams
-      when: tlb_reconcile_identity_boundary | bool
-
-    - name: Reconcile inventories
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.inventories
-
-    - name: Reconcile hosts
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.hosts
-
-    - name: Reconcile groups
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.groups
-
-    - name: Reconcile credential objects without secret values
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.credentials
-
-    - name: Reconcile execution environments
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.execution_environments
-
-    - name: Reconcile projects and synchronize source
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.projects
-
-    - name: Reconcile job templates
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.job_templates
-
-    - name: Reconcile workflow job templates
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.workflow_job_templates
-
-    - name: Reconcile schedules
-      ansible.builtin.include_role:
-        name: infra.controller_configuration.schedules
-
-    - name: Reconcile AAP 2.7 gateway team role assignments
-      ansible.platform.role_team_assignment:
-        aap_hostname: "{{ controller_hostname }}"
-        aap_token: "{{ controller_oauthtoken }}"
-        aap_validate_certs: "{{ controller_validate_certs }}"
-        team: "{{ item.team }}"
-        role_definition: "{{ item.role_definition }}"
-        assignment_objects:
-          - name: "{{ tlb_organization_name }}"
-            type: organizations
-        state: present
-      loop: "{{ gateway_role_team_assignments }}"
-      loop_control:
-        label: "{{ item.team }} -> {{ item.role_definition }}"
-      no_log: "{{ controller_configuration_secure_logging }}"
-      when: tlb_reconcile_identity_boundary | bool
+    - name: Report reconciled controller object count
+      ansible.builtin.debug:
+        msg: >-
+          AAP reconciliation completed with
+          {{ ((controller_reconcile.stdout | from_json).actions | length) }} controlled changes.
