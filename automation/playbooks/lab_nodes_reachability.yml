@@ -1,0 +1,50 @@
+---
+- name: Verify every PNETLab appliance from AAP
+  hosts: lab_nodes
+  connection: local
+  gather_facts: false
+  strategy: free
+
+  tasks:
+    - name: Resolve the live PNETLab console port for this node
+      ansible.builtin.command:
+        argv:
+          - php
+          - -r
+          - >-
+            require "/opt/unetlab/html/includes/init.php";
+            $db=checkDatabase();$q=$db->prepare("SELECT node_session_console
+            FROM node_sessions WHERE node_session_lab=:lab AND node_session_nid=:nid
+            ORDER BY node_session_id DESC LIMIT 1");
+            $q->execute(["lab"=>"506aebe5-ba18-42a0-be47-12eef87049dd","nid"=>{{ pnetlab_node_id }}]);
+            $r=$q->fetch(PDO::FETCH_ASSOC);if(!$r)exit(2);echo $r["node_session_console"];
+      register: console_lookup
+      changed_when: false
+      delegate_to: LAB-PNETLAB-01
+
+    - name: Verify the appliance console is accepting connections
+      ansible.builtin.wait_for:
+        host: "{{ tlb_pnetlab_host }}"
+        port: "{{ console_lookup.stdout | int }}"
+        connect_timeout: 3
+        timeout: 20
+
+    - name: Probe the isolated direct-management proxy
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ tlb_gateway_port }}"
+        connect_timeout: 2
+        timeout: 5
+      register: direct_management
+      failed_when: false
+
+    - name: Report universal console and direct-management state
+      ansible.builtin.debug:
+        msg:
+          node: "{{ inventory_hostname }}"
+          console_port: "{{ console_lookup.stdout | int }}"
+          console_reachable: true
+          direct_protocol: "{{ tlb_management_protocol }}"
+          direct_gateway: "{{ ansible_host }}:{{ tlb_gateway_port }}"
+          direct_reachable: "{{ direct_management is succeeded }}"
+          isolated_oob_ip: "{{ tlb_oob_ip }}"

@@ -3,6 +3,7 @@
 # receives live endpoint data and controller authentication from AAP credentials.
 tlb_organization_name: Tech Little Brawta
 tlb_inventory_name: TLB | Lab
+tlb_pnetlab_inventory_name: TLB | PNETLab Complete
 tlb_project_name: TLB | Lab Automation
 tlb_execution_environment_name: TLB | AAP 2.7 Lab EE
 
@@ -42,6 +43,9 @@ controller_inventories:
       tlb_patch_policy: security
       tlb_patch_max_age_days: 30
       tlb_vmware_validate_certs: false
+  - name: "{{ tlb_pnetlab_inventory_name }}"
+    organization: "{{ tlb_organization_name }}"
+    description: All appliances in the Tech Little Brawta PNETLab topology, sourced from GitHub.
 
 controller_hosts:
   - name: LAB-AAP-CONT-01
@@ -133,7 +137,41 @@ controller_projects:
     wait: true
     timeout: 300
 
+controller_inventory_sources:
+  - name: TLB | PNETLab | GitHub Inventory
+    inventory: "{{ tlb_pnetlab_inventory_name }}"
+    organization: "{{ tlb_organization_name }}"
+    source: scm
+    source_project: "{{ tlb_project_name }}"
+    source_path: automation/inventories/lab/hosts.yml
+    overwrite: true
+    overwrite_vars: true
+    update_on_launch: false
+    update_cache_timeout: 0
+    update_inventory_source: true
+    wait: true
+    timeout: 300
+
 controller_templates:
+  - name: TLB | PNETLab | Power On All Nodes
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: automation/playbooks/pnetlab_power_on.yml
+    inventory: "{{ tlb_pnetlab_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Linux SSH]
+    job_type: run
+    timeout: 1800
+  - name: TLB | PNETLab | Test All Nodes
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_project_name }}"
+    playbook: automation/playbooks/lab_nodes_reachability.yml
+    inventory: "{{ tlb_pnetlab_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Linux SSH]
+    job_type: run
+    forks: 50
+    timeout: 1800
   - name: TLB | Repository | Validate
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"
@@ -372,6 +410,19 @@ controller_templates:
     timeout: 900
 
 controller_workflows:
+  - name: TLB | PNETLab | Power On and Validate
+    organization: "{{ tlb_organization_name }}"
+    description: Power on every appliance and verify both its console and isolated management path from AAP.
+    destroy_current_nodes: true
+    allow_simultaneous: false
+    workflow_nodes:
+      - identifier: pnetlab_power_on
+        unified_job_template: TLB | PNETLab | Power On All Nodes
+        lookup_organization: "{{ tlb_organization_name }}"
+        success_nodes: [pnetlab_test_all]
+      - identifier: pnetlab_test_all
+        unified_job_template: TLB | PNETLab | Test All Nodes
+        lookup_organization: "{{ tlb_organization_name }}"
   - name: TLB | Lab | Validate
     organization: "{{ tlb_organization_name }}"
     description: AAP-controlled sync, validation, preflight, and safe discovery.

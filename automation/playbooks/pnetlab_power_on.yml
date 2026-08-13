@@ -1,0 +1,37 @@
+---
+- name: Ensure every Tech Little Brawta appliance is powered on
+  hosts: LAB-PNETLAB-01
+  gather_facts: false
+  vars:
+    lab_file: /opt/unetlab/labs/Tech Little Brawta Lab.unl
+    lab_tenant: 43
+    lab_session: 4
+
+  tasks:
+    - name: Read node identifiers from the live lab
+      ansible.builtin.command:
+        argv:
+          - php
+          - -r
+          - '$x=simplexml_load_file($argv[1]);foreach($x->topology->nodes->node as $n)echo (int)$n["id"].PHP_EOL;'
+          - "{{ lab_file }}"
+      register: node_ids
+      changed_when: false
+
+    - name: Start every appliance through PNETLab's working per-node path
+      ansible.builtin.command:
+        argv:
+          - /opt/unetlab/wrappers/unl_wrapper
+          - -a
+          - start
+          - -T
+          - "{{ lab_tenant | string }}"
+          - -S
+          - "{{ lab_session | string }}"
+          - -F
+          - "{{ lab_file }}"
+          - -D
+          - "{{ item }}"
+      loop: "{{ node_ids.stdout_lines }}"
+      register: power_results
+      changed_when: "'starting ' in (power_results.stderr | default(''))"
