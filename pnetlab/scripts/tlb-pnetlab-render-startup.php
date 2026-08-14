@@ -100,7 +100,7 @@ if (!copy($labFile, $backup) || $dom->save($labFile) === false) {
 
 chdir('/opt/unetlab/html');
 require_once 'includes/init.php';
-$lab = new Lab($labFile, 43, 1);
+$lab = new Lab($labFile, 43, 4);
 foreach ($configured as $id => $name) {
     $nodes = $lab->getNodes();
     if (!isset($nodes[$id])) {
