@@ -7,6 +7,10 @@ REPOSITORY_URL=https://github.com/techlittlebrawta/techlittlebrawta-lab.git
 BRANCH=agent/complete-pnetlab-aap-management-local
 VENV="$AUTOMATION_ROOT/runtime/venv"
 
+install_system_dependencies() {
+  dnf -y install git openssh-clients sshpass python3 python3-pip rsync
+}
+
 require_clean_repository() {
   test -z "$(git -C "$REPOSITORY" status --porcelain)" || {
     echo "Repository has uncommitted drift" >&2
@@ -50,6 +54,7 @@ install_runtime() {
 }
 
 configure() {
+  install_system_dependencies
   install -d -o root -g automation -m 0750 /opt/automation
   for directory in repos runtime logs artifacts cache tmp collections; do
     install -d -o ansible -g automation -m 0750 "$AUTOMATION_ROOT/$directory"

@@ -16,6 +16,7 @@
     - name: Validate VPCS network presence
       ansible.builtin.command:
         argv: [/usr/bin/ping, -c, '1', -W, '2', "{{ ansible_host }}"]
+      delegate_to: localhost
       changed_when: false
       when: tlb_management_protocol == 'console'
 
