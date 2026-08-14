@@ -10,4 +10,48 @@
       register: configure_result
       changed_when: "'Already up to date.' not in configure_result.stdout"
 
+    - name: Read the installed direct inventory
+      ansible.builtin.command:
+        argv:
+          - /opt/automation/runtime/venv/bin/ansible-inventory
+          - -i
+          - /opt/automation/repos/techlittlebrawta-lab/automation/inventories/pnetlab/hosts.yml
+          - --list
+      register: installed_inventory
+      changed_when: false
+
+    - name: Discover reachable downstream SSH host keys
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/ssh-keyscan
+          - -T
+          - '10'
+          - "{{ item.value.ansible_host }}"
+      loop: >-
+        {{ (installed_inventory.stdout | from_json)._meta.hostvars |
+           dict2items |
+           selectattr('value.tlb_management_protocol', 'defined') |
+           selectattr('value.tlb_management_protocol', 'equalto', 'ssh') |
+           list }}
+      register: downstream_host_keys
+      changed_when: false
+      failed_when: false
+      no_log: true
+
+    - name: Trust the initially observed isolated OOB SSH host keys
+      ansible.builtin.known_hosts:
+        path: /home/ansible/.ssh/known_hosts
+        name: "{{ item.item.value.ansible_host }}"
+        key: "{{ key_line }}"
+        state: present
+      vars:
+        key_line: >-
+          {{ item.stdout_lines |
+             reject('match', '^#') |
+             select('match', '^' ~ (item.item.value.ansible_host | regex_escape) ~ ' ') |
+             first | default('') }}
+      loop: "{{ downstream_host_keys.results }}"
+      when: key_line | length > 0
+      no_log: true
+
 - import_playbook: community_control_node_health.yml
