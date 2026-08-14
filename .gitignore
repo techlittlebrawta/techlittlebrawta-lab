@@ -13,6 +13,7 @@ Desktop.ini
 .env.*
 !.env.example
 *.pem
+!automation/files/Ansible_Automation_Platform.pem
 *.key
 *.pfx
 *.p12
@@ -31,6 +32,8 @@ dist/
 build/
 coverage/
 .ansible/
+__pycache__/
+*.pyc
 
 # Managed public-lab exclusions
 # Prevent accidental publication of VM disks, firmware and appliance images.

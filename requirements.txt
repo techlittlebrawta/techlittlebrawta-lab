@@ -6,3 +6,5 @@ ncclient==0.7.0
 pyvmomi==9.0.0.0
 requests==2.32.5
 yamllint==1.38.0
+pywinrm==0.5.0
+pan-os-python==1.12.1

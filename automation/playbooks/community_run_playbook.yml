@@ -1,0 +1,10 @@
+---
+- name: Run an approved Community Ansible playbook
+  hosts: mbj_community_control
+  gather_facts: false
+  vars:
+    runner_playbook: "{{ community_playbook | default('read_only') }}"
+    runner_limit: "{{ community_limit | default('pnetlab') }}"
+    runner_extra_vars: "{{ community_extra_vars | default({}) }}"
+  tasks:
+    - import_tasks: tasks/community_runner_request.yml

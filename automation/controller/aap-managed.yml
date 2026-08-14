@@ -5,6 +5,7 @@ tlb_organization_name: Tech Little Brawta
 tlb_inventory_name: TLB | Lab
 tlb_pnetlab_inventory_name: TLB | PNETLab Complete
 tlb_project_name: TLB | Lab Automation
+tlb_pnetlab_project_name: TLB | Private Lab Automation
 tlb_execution_environment_name: TLB | AAP 2.7 Lab EE
 
 controller_organizations:
@@ -34,12 +35,13 @@ controller_inventories:
       tlb_management_cidr: "{{ tlb_management_network_cidr }}"
       tlb_external_ntp_servers:
         - name: time.cloudflare.com
-          nts: true
         - name: time.google.com
         - name: time.facebook.com
       tlb_internal_ntp_servers:
-        - "{{ tlb_aap_ip }}"
-        - "{{ tlb_pnetlab_ip }}"
+        - 10.255.255.1
+      tlb_ntp_allowed_cidrs:
+        - "{{ tlb_management_network_cidr }}"
+        - 10.255.255.0/24
       tlb_patch_policy: security
       tlb_patch_max_age_days: 30
       tlb_vmware_validate_certs: false
@@ -92,6 +94,66 @@ controller_groups:
     hosts: [LAB-SW-EX2200]
     preserve_existing_hosts: false
 
+controller_credential_types:
+  - name: TLB Lab Baseline Secrets
+    description: Runtime-only credentials used to rotate appliance passwords and apply the NTP baseline.
+    kind: cloud
+    inputs:
+      fields:
+        - id: tlb_lab_password
+          label: Desired lab password
+          type: string
+          secret: true
+        - id: tlb_arista_current_password
+          label: Current Arista password
+          type: string
+          secret: true
+        - id: tlb_cisco_current_password
+          label: Current Cisco password
+          type: string
+          secret: true
+        - id: tlb_juniper_current_password
+          label: Current Juniper password
+          type: string
+          secret: true
+        - id: tlb_aruba_current_password
+          label: Current Aruba password
+          type: string
+          secret: true
+        - id: tlb_fortinet_current_password
+          label: Current Fortinet password
+          type: string
+          secret: true
+        - id: tlb_paloalto_current_password
+          label: Current Palo Alto password
+          type: string
+          secret: true
+        - id: tlb_windows_current_password
+          label: Current Windows password
+          type: string
+          secret: true
+        - id: tlb_linux_current_password
+          label: Current Linux password
+          type: string
+          secret: true
+        - id: tlb_infoblox_current_password
+          label: Current Infoblox password
+          type: string
+          secret: true
+      required: [tlb_lab_password]
+    injectors:
+      env:
+        TLB_LAB_PASSWORD: "{% raw %}{{ tlb_lab_password }}{% endraw %}"
+        TLB_ARISTA_CURRENT_PASSWORD: "{% raw %}{{ tlb_arista_current_password }}{% endraw %}"
+        TLB_CISCO_CURRENT_PASSWORD: "{% raw %}{{ tlb_cisco_current_password }}{% endraw %}"
+        TLB_JUNIPER_CURRENT_PASSWORD: "{% raw %}{{ tlb_juniper_current_password }}{% endraw %}"
+        TLB_ARUBA_CURRENT_PASSWORD: "{% raw %}{{ tlb_aruba_current_password }}{% endraw %}"
+        TLB_FORTINET_CURRENT_PASSWORD: "{% raw %}{{ tlb_fortinet_current_password }}{% endraw %}"
+        TLB_PALOALTO_CURRENT_PASSWORD: "{% raw %}{{ tlb_paloalto_current_password }}{% endraw %}"
+        TLB_WINDOWS_CURRENT_PASSWORD: "{% raw %}{{ tlb_windows_current_password }}{% endraw %}"
+        TLB_LINUX_CURRENT_PASSWORD: "{% raw %}{{ tlb_linux_current_password }}{% endraw %}"
+        TLB_INFOBLOX_CURRENT_PASSWORD: "{% raw %}{{ tlb_infoblox_current_password }}{% endraw %}"
+
 controller_credentials:
   - name: TLB | Linux SSH
     organization: "{{ tlb_organization_name }}"
@@ -109,6 +171,10 @@ controller_credentials:
     organization: "{{ tlb_organization_name }}"
     credential_type: Red Hat Ansible Automation Platform
     description: Non-superuser tlb-automation platform identity scoped through the TLB-Automation-Maintainers team.
+  - name: TLB | Lab Baseline Secrets
+    organization: "{{ tlb_organization_name }}"
+    credential_type: TLB Lab Baseline Secrets
+    description: Encrypted runtime-only current and desired appliance passwords; values are never stored in Git.
 
 controller_execution_environments:
   - name: "{{ tlb_execution_environment_name }}"
@@ -136,13 +202,27 @@ controller_projects:
     update_project: true
     wait: true
     timeout: 300
+  - name: "{{ tlb_pnetlab_project_name }}"
+    organization: "{{ tlb_organization_name }}"
+    description: Private operational topology, inventory, and appliance lifecycle automation.
+    scm_type: git
+    scm_url: https://github.com/techlittlebrawta/techlittlebrawta-lab.git
+    scm_branch: main
+    scm_clean: true
+    scm_delete_on_update: false
+    scm_update_on_launch: true
+    allow_override: false
+    default_environment: "{{ tlb_execution_environment_name }}"
+    update_project: true
+    wait: true
+    timeout: 300
 
 controller_inventory_sources:
   - name: TLB | PNETLab | GitHub Inventory
     inventory: "{{ tlb_pnetlab_inventory_name }}"
     organization: "{{ tlb_organization_name }}"
     source: scm
-    source_project: "{{ tlb_project_name }}"
+    source_project: "{{ tlb_pnetlab_project_name }}"
     source_path: automation/inventories/lab/hosts.yml
     overwrite: true
     overwrite_vars: true
@@ -155,7 +235,7 @@ controller_inventory_sources:
 controller_templates:
   - name: TLB | PNETLab | Power On All Nodes
     organization: "{{ tlb_organization_name }}"
-    project: "{{ tlb_project_name }}"
+    project: "{{ tlb_pnetlab_project_name }}"
     playbook: automation/playbooks/pnetlab_power_on.yml
     inventory: "{{ tlb_pnetlab_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
@@ -164,14 +244,27 @@ controller_templates:
     timeout: 1800
   - name: TLB | PNETLab | Test All Nodes
     organization: "{{ tlb_organization_name }}"
-    project: "{{ tlb_project_name }}"
+    project: "{{ tlb_pnetlab_project_name }}"
     playbook: automation/playbooks/lab_nodes_reachability.yml
     inventory: "{{ tlb_pnetlab_inventory_name }}"
     execution_environment: "{{ tlb_execution_environment_name }}"
     credentials: [TLB | Linux SSH]
     job_type: run
-    forks: 50
+    forks: 10
     timeout: 1800
+  - name: TLB | PNETLab | Apply Password and NTP Baseline
+    organization: "{{ tlb_organization_name }}"
+    project: "{{ tlb_pnetlab_project_name }}"
+    playbook: automation/playbooks/lab_baseline.yml
+    inventory: "{{ tlb_pnetlab_inventory_name }}"
+    execution_environment: "{{ tlb_execution_environment_name }}"
+    credentials: [TLB | Lab Baseline Secrets]
+    job_type: run
+    forks: 10
+    timeout: 3600
+    ask_credential_on_launch: false
+    ask_variables_on_launch: false
+    ask_limit_on_launch: false
   - name: TLB | Repository | Validate
     organization: "{{ tlb_organization_name }}"
     project: "{{ tlb_project_name }}"

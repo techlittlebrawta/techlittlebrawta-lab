@@ -1,0 +1,68 @@
+#!/bin/bash
+set -euo pipefail
+
+AUTOMATION_ROOT=/opt/automation
+REPOSITORY="$AUTOMATION_ROOT/repos/techlittlebrawta-lab"
+REPOSITORY_URL=https://github.com/techlittlebrawta/techlittlebrawta-lab.git
+BRANCH=agent/complete-pnetlab-aap-management-local
+VENV="$AUTOMATION_ROOT/runtime/venv"
+
+require_clean_repository() {
+  test -z "$(git -C "$REPOSITORY" status --porcelain)" || {
+    echo "Repository has uncommitted drift" >&2
+    exit 3
+  }
+}
+
+sync_repository() {
+  if [[ ! -d "$REPOSITORY/.git" ]]; then
+    install -d -o ansible -g automation -m 0750 "$(dirname "$REPOSITORY")"
+    runuser -u ansible -- git clone --branch "$BRANCH" --single-branch "$REPOSITORY_URL" "$REPOSITORY"
+  else
+    require_clean_repository
+    runuser -u ansible -- git -C "$REPOSITORY" fetch --prune origin "$BRANCH"
+    runuser -u ansible -- git -C "$REPOSITORY" checkout "$BRANCH"
+    runuser -u ansible -- git -C "$REPOSITORY" merge --ff-only "origin/$BRANCH"
+  fi
+}
+
+install_dependencies() {
+  python3 -m venv "$VENV"
+  "$VENV/bin/python" -m pip install --disable-pip-version-check --upgrade pip
+  "$VENV/bin/python" -m pip install --disable-pip-version-check -r "$REPOSITORY/requirements.txt"
+  install -d -o ansible -g automation -m 0750 "$AUTOMATION_ROOT/collections"
+  runuser -u ansible -- "$VENV/bin/ansible-galaxy" collection install --force \
+    -r "$REPOSITORY/collections/requirements.yml" -p "$AUTOMATION_ROOT/collections"
+}
+
+install_runtime() {
+  install -d -o root -g root -m 0755 /etc/ansible
+  install -o root -g root -m 0755 "$REPOSITORY/automation/runner/mbj_ansible_runner.py" /usr/local/sbin/mbj-ansible-runner
+  install -o root -g root -m 0755 "$REPOSITORY/automation/files/mbj-control-maintenance" /usr/local/sbin/mbj-control-maintenance
+  install -o root -g root -m 0440 "$REPOSITORY/automation/files/mbj-community-ansible.sudoers" /etc/sudoers.d/mbj-community-ansible
+  visudo -cf /etc/sudoers.d/mbj-community-ansible
+  install -o root -g root -m 0644 "$REPOSITORY/automation/files/mbj-automation.logrotate" /etc/logrotate.d/mbj-automation
+  install -o root -g automation -m 0640 "$REPOSITORY/automation/files/mbj-ansible.cfg" /etc/ansible/mbj-ansible.cfg
+  install -o root -g root -m 0644 "$REPOSITORY/automation/files/Ansible_Automation_Platform.pem" /etc/pki/ca-trust/source/anchors/Ansible_Automation_Platform.pem
+  update-ca-trust
+  grep -q 'lab-aap-cont-01.lab.example.com' /etc/hosts || printf '%s\n' '192.168.1.251 lab-aap-cont-01.lab.example.com LAB-AAP-CONT-01' >> /etc/hosts
+  restorecon -RF /usr/local/sbin/mbj-ansible-runner /usr/local/sbin/mbj-control-maintenance /etc/sudoers.d/mbj-community-ansible /etc/ansible/mbj-ansible.cfg
+}
+
+configure() {
+  install -d -o root -g automation -m 0750 /opt/automation
+  for directory in repos runtime logs artifacts cache tmp collections; do
+    install -d -o ansible -g automation -m 0750 "$AUTOMATION_ROOT/$directory"
+  done
+  install -d -o ansible -g automation -m 0700 "$AUTOMATION_ROOT/runtime/requests" "$AUTOMATION_ROOT/runtime/secrets"
+  sync_repository
+  install_dependencies
+  install_runtime
+}
+
+case "${1:-}" in
+  configure) configure ;;
+  sync) sync_repository ;;
+  dependencies) require_clean_repository; install_dependencies; install_runtime ;;
+  *) echo "Usage: mbj-control-maintenance {configure|sync|dependencies}" >&2; exit 2 ;;
+esac

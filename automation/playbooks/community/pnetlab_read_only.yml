@@ -1,0 +1,108 @@
+---
+- name: Validate direct management endpoints for every PNETLab node
+  hosts: pnetlab
+  gather_facts: false
+  strategy: free
+  tasks:
+    - name: Validate the declared management service
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ ansible_port }}"
+        connect_timeout: 3
+        timeout: 15
+      delegate_to: localhost
+      when: tlb_management_protocol != 'console'
+
+    - name: Validate VPCS network presence
+      ansible.builtin.command:
+        argv: [/usr/bin/ping, -c, '1', -W, '2', "{{ ansible_host }}"]
+      changed_when: false
+      when: tlb_management_protocol == 'console'
+
+- name: Gather minimal Linux facts
+  hosts: linux
+  gather_facts: false
+  tasks:
+    - ansible.builtin.ping:
+    - ansible.builtin.setup:
+        gather_subset: [min]
+
+- name: Validate Windows automation
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - ansible.windows.win_ping:
+    - ansible.windows.setup:
+        gather_subset: [min]
+
+- name: Gather Arista facts
+  hosts: arista_eos
+  gather_facts: false
+  tasks:
+    - arista.eos.eos_facts:
+        gather_subset: [min]
+
+- name: Gather Cisco IOS facts
+  hosts: cisco_ios
+  gather_facts: false
+  tasks:
+    - cisco.ios.ios_facts:
+        gather_subset: [min]
+
+- name: Read Cisco FTD version
+  hosts: cisco_ftd
+  gather_facts: false
+  tasks:
+    - ansible.netcommon.cli_command:
+        command: show version
+      changed_when: false
+
+- name: Gather Junos facts
+  hosts: juniper_junos
+  gather_facts: false
+  tasks:
+    - junipernetworks.junos.junos_facts:
+        gather_subset: [min]
+
+- name: Gather Aruba AOS-CX facts
+  hosts: aruba_aoscx
+  gather_facts: false
+  tasks:
+    - arubanetworks.aoscx.aoscx_facts:
+        gather_subset: [min]
+
+- name: Read FortiOS system status
+  hosts: fortinet_fortios
+  gather_facts: false
+  tasks:
+    - fortinet.fortios.fortios_monitor_fact:
+        vdom: root
+        selector: system_status
+
+- name: Read PAN-OS system information
+  hosts: paloalto_panos
+  connection: local
+  gather_facts: false
+  tasks:
+    - paloaltonetworks.panos.panos_op:
+        provider:
+          ip_address: "{{ ansible_host }}"
+          username: admin
+          password: "{{ lookup('env', 'TLB_LAB_PASSWORD') }}"
+        cmd: show system info
+      no_log: true
+
+- name: Read Infoblox grid information
+  hosts: infoblox_nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - ansible.builtin.uri:
+        url: "https://{{ ansible_host }}/wapi/v2.12/grid?_return_fields=_ref,name"
+        method: GET
+        user: admin
+        password: "{{ lookup('env', 'TLB_LAB_PASSWORD') }}"
+        force_basic_auth: true
+        validate_certs: true
+        return_content: false
+      no_log: true

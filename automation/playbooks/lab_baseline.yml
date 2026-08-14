@@ -1,0 +1,387 @@
+---
+- name: Build native AAP targets through the isolated PNETLab gateway
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    target_password: "{{ lookup('env', 'TLB_LAB_PASSWORD') }}"
+    ntp_server: 10.255.255.1
+  tasks:
+    - name: Require the encrypted AAP baseline credential
+      ansible.builtin.assert:
+        that:
+          - target_password | length >= 8
+        fail_msg: Attach the TLB Lab Baseline Secrets credential to this job.
+      no_log: true
+
+    - name: Create Arista native targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: baseline_arista
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_port: "{{ hostvars[item].tlb_ssh_gateway_port }}"
+        ansible_connection: ansible.netcommon.network_cli
+        ansible_network_os: arista.eos.eos
+        ansible_user: admin
+        ansible_password: "{{ lookup('env', 'TLB_ARISTA_CURRENT_PASSWORD') }}"
+        tlb_target_password: "{{ target_password }}"
+        tlb_ntp_server: "{{ ntp_server }}"
+      loop: "{{ groups['arista_eos'] | default([]) }}"
+      no_log: true
+
+    - name: Create Cisco IOS native targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: baseline_cisco_ios
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_port: "{{ hostvars[item].tlb_ssh_gateway_port }}"
+        ansible_connection: ansible.netcommon.network_cli
+        ansible_network_os: cisco.ios.ios
+        ansible_user: admin
+        ansible_password: "{{ lookup('env', 'TLB_CISCO_CURRENT_PASSWORD') }}"
+        tlb_target_password: "{{ target_password }}"
+        tlb_ntp_server: "{{ ntp_server }}"
+      loop: "{{ groups['cisco_ios'] | default([]) }}"
+      no_log: true
+
+    - name: Create Juniper native targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: baseline_juniper
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_port: "{{ hostvars[item].tlb_ssh_gateway_port }}"
+        ansible_connection: ansible.netcommon.netconf
+        ansible_network_os: junipernetworks.junos.junos
+        ansible_user: root
+        ansible_password: "{{ lookup('env', 'TLB_JUNIPER_CURRENT_PASSWORD') }}"
+        tlb_target_password: "{{ target_password }}"
+        tlb_ntp_server: "{{ ntp_server }}"
+      loop: "{{ groups['juniper_junos'] | default([]) }}"
+      no_log: true
+
+    - name: Create Aruba AOS-CX native targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: baseline_aruba
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_port: "{{ hostvars[item].tlb_ssh_gateway_port }}"
+        ansible_connection: ansible.netcommon.network_cli
+        ansible_network_os: arubanetworks.aoscx.aoscx
+        ansible_user: admin
+        ansible_password: "{{ lookup('env', 'TLB_ARUBA_CURRENT_PASSWORD') }}"
+        tlb_target_password: "{{ target_password }}"
+        tlb_ntp_server: "{{ ntp_server }}"
+      loop: "{{ groups['aruba_aoscx'] | default([]) }}"
+      no_log: true
+
+    - name: Create Cisco FTD native targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: baseline_cisco_ftd
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_port: "{{ hostvars[item].tlb_ssh_gateway_port }}"
+        ansible_connection: ansible.netcommon.network_cli
+        ansible_network_os: cisco.asa.asa
+        ansible_user: admin
+        ansible_password: "{{ lookup('env', 'TLB_CISCO_CURRENT_PASSWORD') }}"
+        tlb_current_password: "{{ lookup('env', 'TLB_CISCO_CURRENT_PASSWORD') }}"
+        tlb_target_password: "{{ target_password }}"
+        tlb_ntp_server: "{{ ntp_server }}"
+      loop: "{{ groups['cisco_ftd'] | default([]) }}"
+      no_log: true
+
+    - name: Create Linux native targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: baseline_linux
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_port: "{{ hostvars[item].tlb_ssh_gateway_port }}"
+        ansible_connection: ssh
+        ansible_user: root
+        ansible_password: "{{ lookup('env', 'TLB_LINUX_CURRENT_PASSWORD') }}"
+        tlb_target_password: "{{ target_password }}"
+        tlb_ntp_server: "{{ ntp_server }}"
+      loop: "{{ groups['linux'] | default([]) }}"
+      no_log: true
+
+    - name: Create Windows native targets
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: baseline_windows
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_port: "{{ hostvars[item].tlb_winrm_gateway_port }}"
+        ansible_connection: winrm
+        ansible_user: "{{ 'Administrator' if hostvars[item].pnetlab_template == 'winserver' else 'eve' }}"
+        ansible_password: "{{ lookup('env', 'TLB_WINDOWS_CURRENT_PASSWORD') }}"
+        ansible_winrm_transport: ntlm
+        ansible_winrm_scheme: https
+        ansible_winrm_server_cert_validation: ignore
+        tlb_target_password: "{{ target_password }}"
+        tlb_ntp_server: "{{ ntp_server }}"
+      loop: "{{ groups['windows'] | default([]) }}"
+      no_log: true
+
+- name: Apply Arista password and NTP baseline
+  hosts: baseline_arista
+  gather_facts: false
+  tasks:
+    - name: Configure Arista administrator and NTP
+      arista.eos.eos_config:
+        lines:
+          - "username admin privilege 15 secret 0 {{ tlb_target_password }}"
+          - "ntp server {{ tlb_ntp_server }} prefer"
+        save_when: modified
+      no_log: true
+
+- name: Apply Cisco IOS password and NTP baseline
+  hosts: baseline_cisco_ios
+  gather_facts: false
+  tasks:
+    - name: Configure Cisco administrator and NTP
+      cisco.ios.ios_config:
+        lines:
+          - "username admin privilege 15 secret 0 {{ tlb_target_password }}"
+          - "ntp server {{ tlb_ntp_server }} prefer"
+        save_when: modified
+      no_log: true
+
+- name: Apply Juniper password and NTP baseline
+  hosts: baseline_juniper
+  gather_facts: false
+  tasks:
+    - name: Configure Juniper root authentication and NTP
+      junipernetworks.junos.junos_config:
+        lines:
+          - "set system root-authentication encrypted-password {{ tlb_target_password | password_hash('sha512') }}"
+          - "set system ntp server {{ tlb_ntp_server }} prefer"
+        comment: "AAP lab baseline {{ tower_job_id | default('manual') }}"
+      no_log: true
+
+- name: Apply Aruba password and NTP baseline
+  hosts: baseline_aruba
+  gather_facts: false
+  tasks:
+    - name: Configure Aruba administrator and NTP
+      arubanetworks.aoscx.aoscx_config:
+        lines:
+          - "user admin group administrators password plaintext {{ tlb_target_password }}"
+          - "ntp server {{ tlb_ntp_server }} iburst"
+          - ntp enable
+      no_log: true
+
+- name: Apply Cisco FTD password and NTP baseline
+  hosts: baseline_cisco_ftd
+  gather_facts: false
+  tasks:
+    - name: Configure the FTD NTP server
+      ansible.netcommon.cli_command:
+        command: "configure network ntp servers {{ tlb_ntp_server }}"
+
+    - name: Rotate the FTD administrator password
+      ansible.netcommon.cli_command:
+        command: configure password
+        prompt:
+          - "(?i)current password"
+          - "(?i)new password"
+          - "(?i)confirm.*password"
+        answer:
+          - "{{ tlb_current_password }}"
+          - "{{ tlb_target_password }}"
+          - "{{ tlb_target_password }}"
+        check_all: true
+      no_log: true
+
+- name: Apply Linux password and NTP baseline
+  hosts: baseline_linux
+  gather_facts: false
+  tasks:
+    - name: Rotate root password without exposing it in job output
+      ansible.builtin.command: chpasswd
+      args:
+        stdin: "root:{{ tlb_target_password }}"
+      no_log: true
+
+    - name: Install reachable isolated NTP source
+      ansible.builtin.copy:
+        dest: /etc/chrony.d/tlb-lab.sources
+        content: "server {{ tlb_ntp_server }} iburst prefer\n"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Linux time service
+
+  handlers:
+    - name: Restart Linux time service
+      ansible.builtin.service:
+        name: chronyd
+        state: restarted
+        enabled: true
+
+- name: Apply Windows password and NTP baseline
+  hosts: baseline_windows
+  gather_facts: false
+  tasks:
+    - name: Rotate the connected Windows administrator password
+      ansible.windows.win_user:
+        name: "{{ ansible_user }}"
+        password: "{{ tlb_target_password }}"
+        update_password: always
+        state: present
+      no_log: true
+
+    - name: Configure Windows Time for the isolated NTP source
+      ansible.windows.win_command: >-
+        w32tm.exe /config /manualpeerlist:{{ tlb_ntp_server }},0x8
+        /syncfromflags:manual /update
+
+    - name: Restart Windows Time
+      ansible.windows.win_service:
+        name: W32Time
+        state: restarted
+        start_mode: auto
+
+- name: Apply Palo Alto password and NTP baseline
+  hosts: paloalto_panos
+  connection: local
+  gather_facts: false
+  vars:
+    panos_provider:
+      ip_address: "{{ tlb_pnetlab_host }}"
+      port: "{{ tlb_https_gateway_port }}"
+      username: admin
+      password: "{{ lookup('env', 'TLB_PALOALTO_CURRENT_PASSWORD') }}"
+  tasks:
+    - name: Configure PAN-OS NTP
+      paloaltonetworks.panos.panos_mgtconfig:
+        provider: "{{ panos_provider }}"
+        ntp_server_primary: 10.255.255.1
+      no_log: true
+
+    - name: Rotate PAN-OS administrator password
+      paloaltonetworks.panos.panos_administrator:
+        provider: "{{ panos_provider }}"
+        admin_username: admin
+        admin_password: "{{ lookup('env', 'TLB_LAB_PASSWORD') }}"
+        superuser: true
+      no_log: true
+
+    - name: Commit PAN-OS baseline
+      paloaltonetworks.panos.panos_commit_firewall:
+        provider: "{{ panos_provider }}"
+      no_log: true
+
+- name: Apply Fortinet password and NTP baseline
+  hosts: fortinet_fortios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Configure FortiOS NTP through the isolated HTTPS gateway
+      fortinet.fortios.fortios_system_ntp:
+        vdom: root
+        system_ntp:
+          ntpsync: enable
+          type: custom
+          ntpserver:
+            - id: 1
+              server: 10.255.255.1
+      vars:
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_httpapi_port: "{{ tlb_https_gateway_port }}"
+        ansible_user: admin
+        ansible_password: "{{ lookup('env', 'TLB_FORTINET_CURRENT_PASSWORD') }}"
+        ansible_connection: ansible.netcommon.httpapi
+        ansible_network_os: fortinet.fortios.fortios
+        ansible_httpapi_use_ssl: true
+        ansible_httpapi_validate_certs: false
+      no_log: true
+
+    - name: Rotate FortiOS administrator password
+      fortinet.fortios.fortios_system_admin:
+        vdom: root
+        state: present
+        system_admin:
+          name: admin
+          password: "{{ lookup('env', 'TLB_LAB_PASSWORD') }}"
+          accprofile: super_admin
+      vars:
+        ansible_host: "{{ tlb_pnetlab_host }}"
+        ansible_httpapi_port: "{{ tlb_https_gateway_port }}"
+        ansible_user: admin
+        ansible_password: "{{ lookup('env', 'TLB_FORTINET_CURRENT_PASSWORD') }}"
+        ansible_connection: ansible.netcommon.httpapi
+        ansible_network_os: fortinet.fortios.fortios
+        ansible_httpapi_use_ssl: true
+        ansible_httpapi_validate_certs: false
+      no_log: true
+
+- name: Apply Infoblox password and NTP baseline
+  hosts: infoblox_nios
+  connection: local
+  gather_facts: false
+  vars:
+    nios_api: "https://{{ tlb_pnetlab_host }}:{{ tlb_https_gateway_port }}/wapi/v2.12"
+    nios_auth:
+      user: admin
+      password: "{{ lookup('env', 'TLB_INFOBLOX_CURRENT_PASSWORD') }}"
+  tasks:
+    - name: Resolve the Infoblox grid object
+      ansible.builtin.uri:
+        url: "{{ nios_api }}/grid?_return_fields=_ref,ntp_server"
+        method: GET
+        user: "{{ nios_auth.user }}"
+        password: "{{ nios_auth.password }}"
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
+      register: nios_grid
+      no_log: true
+
+    - name: Configure the Infoblox grid NTP server
+      ansible.builtin.uri:
+        url: "{{ nios_api }}/{{ nios_grid.json[0]._ref }}"
+        method: PUT
+        user: "{{ nios_auth.user }}"
+        password: "{{ nios_auth.password }}"
+        force_basic_auth: true
+        validate_certs: false
+        body_format: json
+        body:
+          ntp_server:
+            - 10.255.255.1
+        status_code: [200, 201]
+      no_log: true
+
+    - name: Resolve the Infoblox administrator object
+      ansible.builtin.uri:
+        url: "{{ nios_api }}/adminuser?name=admin&_return_fields=_ref,name"
+        method: GET
+        user: "{{ nios_auth.user }}"
+        password: "{{ nios_auth.password }}"
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
+      register: nios_admin
+      no_log: true
+
+    - name: Rotate the Infoblox administrator password
+      ansible.builtin.uri:
+        url: "{{ nios_api }}/{{ nios_admin.json[0]._ref }}"
+        method: PUT
+        user: "{{ nios_auth.user }}"
+        password: "{{ nios_auth.password }}"
+        force_basic_auth: true
+        validate_certs: false
+        body_format: json
+        body:
+          password: "{{ lookup('env', 'TLB_LAB_PASSWORD') }}"
+        status_code: [200, 201]
+      no_log: true
+
+- name: Document non-configurable endpoint emulators
+  hosts: vpcs
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Report VPCS password and NTP applicability
+      ansible.builtin.debug:
+        msg: VPCS SIP endpoint emulators provide neither user authentication nor an NTP service; reachability validation remains enabled.

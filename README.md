@@ -21,3 +21,15 @@ See [automation identity](automation/docs/automation-identity.md) for credential
 ## Operations
 
 Linux security updates, cross-platform time integrity, least privilege, AAP schedules, approvals, recovery gates, and GitHub controls are defined in [automation operations](automation/docs/operations.md).
+
+## MBJ Community Ansible
+
+AAP remains the operator interface and directly manages `MBJ-PRD-ANSIBLE001` at
+`192.168.1.250`. That RHEL 10 control node directly manages the 51 PNETLab
+appliances over the isolated `10.255.255.0/24` OOB network. GitHub is the source
+of truth for inventory, playbooks, controller desired state, and the constrained
+execution boundary.
+
+Start with [architecture](docs/architecture.md), [operations](docs/operations.md),
+and [disaster recovery](docs/disaster-recovery.md). The canonical controller
+objects are in `automation/controller/mbj-community.yml`.

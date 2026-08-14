@@ -1,7 +1,6 @@
 ---
 - name: Verify every PNETLab appliance from AAP
   hosts: lab_nodes
-  connection: local
   gather_facts: false
   strategy: free
 
@@ -9,15 +8,15 @@
     - name: Resolve the live PNETLab console port for this node
       ansible.builtin.command:
         argv:
-          - php
+          - /usr/bin/php
           - -r
           - >-
             require "/opt/unetlab/html/includes/init.php";
-            $db=checkDatabase();$q=$db->prepare("SELECT node_session_console
+            $db=checkDatabase();$q=$db->prepare("SELECT node_session_port
             FROM node_sessions WHERE node_session_lab=:lab AND node_session_nid=:nid
             ORDER BY node_session_id DESC LIMIT 1");
-            $q->execute(["lab"=>"506aebe5-ba18-42a0-be47-12eef87049dd","nid"=>{{ pnetlab_node_id }}]);
-            $r=$q->fetch(PDO::FETCH_ASSOC);if(!$r)exit(2);echo $r["node_session_console"];
+            $q->execute(["lab"=>{{ tlb_pnetlab_session }},"nid"=>{{ pnetlab_node_id }}]);
+            $r=$q->fetch(PDO::FETCH_ASSOC);if(!$r)exit(2);echo $r["node_session_port"];
       register: console_lookup
       changed_when: false
       delegate_to: LAB-PNETLAB-01

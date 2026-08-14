@@ -8,3 +8,17 @@ collections:
     version: 4.8.0
   - name: junipernetworks.junos
     version: 9.1.0
+  - name: ansible.windows
+    version: 3.2.0
+  - name: arista.eos
+    version: 12.0.1
+  - name: cisco.ios
+    version: 11.1.1
+  - name: cisco.asa
+    version: 6.1.0
+  - name: arubanetworks.aoscx
+    version: 4.4.0
+  - name: fortinet.fortios
+    version: 2.5.1
+  - name: paloaltonetworks.panos
+    version: 3.3.0

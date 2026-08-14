@@ -1,0 +1,9 @@
+---
+- name: Run approved direct PNETLab connectivity validation
+  hosts: mbj_community_control
+  gather_facts: false
+  vars:
+    runner_playbook: read_only
+    runner_limit: pnetlab
+  tasks:
+    - import_tasks: tasks/community_runner_request.yml

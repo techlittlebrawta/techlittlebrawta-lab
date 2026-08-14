@@ -1,0 +1,5 @@
+Defaults:ansible use_pty
+Defaults:ansible logfile=/var/log/sudo-ansible.log
+ansible ALL=(root) NOPASSWD: /usr/local/sbin/mbj-control-maintenance configure
+ansible ALL=(root) NOPASSWD: /usr/local/sbin/mbj-control-maintenance sync
+ansible ALL=(root) NOPASSWD: /usr/local/sbin/mbj-control-maintenance dependencies

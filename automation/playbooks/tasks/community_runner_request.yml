@@ -1,0 +1,58 @@
+---
+- name: Allocate request identity
+  ansible.builtin.set_fact:
+    community_request_id: "{{ lookup('pipe', 'uuidgen') }}"
+
+- name: Execute an ephemeral Community request
+  block:
+    - name: Install ephemeral Community credential envelope
+      ansible.builtin.copy:
+        dest: "/opt/automation/runtime/secrets/{{ community_request_id }}.json"
+        owner: ansible
+        group: ansible
+        mode: '0600'
+        content: >-
+          {{ {'TLB_LAB_PASSWORD': lookup('env', 'TLB_LAB_PASSWORD')} | to_nice_json }}
+      no_log: true
+
+    - name: Install validated runner request
+      ansible.builtin.copy:
+        dest: "/opt/automation/runtime/requests/{{ community_request_id }}.json"
+        owner: ansible
+        group: ansible
+        mode: '0600'
+        content: >-
+          {{ {
+            'schema': 1,
+            'playbook': runner_playbook,
+            'limit': runner_limit,
+            'extra_vars': runner_extra_vars | default({}),
+            'aap_job_id': tower_job_id | default(''),
+            'aap_workflow_job_id': tower_workflow_job_id | default(''),
+            'secret_file': '/opt/automation/runtime/secrets/' ~ community_request_id ~ '.json'
+          } | to_nice_json }}
+
+    - name: Execute the approved runner
+      ansible.builtin.command:
+        argv:
+          - /usr/local/sbin/mbj-ansible-runner
+          - --request
+          - "/opt/automation/runtime/requests/{{ community_request_id }}.json"
+      register: community_execution
+      changed_when: >-
+        community_execution.rc == 0 and
+        (community_execution.stdout | from_json).changed | int > 0
+      failed_when: community_execution.rc != 0
+  always:
+    - name: Remove ephemeral Community request material
+      ansible.builtin.file:
+        path: "/opt/automation/runtime/{{ item }}/{{ community_request_id }}.json"
+        state: absent
+      loop:
+        - requests
+        - secrets
+      no_log: true
+
+- name: Report structured Community result
+  ansible.builtin.debug:
+    var: community_execution.stdout

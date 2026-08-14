@@ -1,0 +1,11 @@
+---
+- name: Validate MBJ Community Ansible dependencies
+  hosts: mbj_community_control
+  gather_facts: false
+  tasks:
+    - ansible.builtin.command:
+        argv: [/opt/automation/runtime/venv/bin/python, -m, pip, check]
+      changed_when: false
+    - ansible.builtin.command:
+        argv: [/opt/automation/runtime/venv/bin/ansible-galaxy, collection, list]
+      changed_when: false

@@ -1,15 +1,12 @@
 # Managed by AAP from techlittlebrawta-lab. Local edits are overwritten.
-{% for server in tlb_external_ntp_servers %}
-server {{ server.name }} iburst{{ ' nts' if server.nts | default(false) else '' }}
-{% endfor %}
+{% for server in tlb_external_ntp_servers %}server {{ server.name }} iburst{{ ' nts' if server.nts | default(false) else '' }}{{ '\n' }}{% endfor %}
 
 driftfile {{ '/var/lib/chrony/drift' if ansible_os_family == 'RedHat' else '/var/lib/chrony/chrony.drift' }}
 makestep 1.0 3
 rtcsync
 
-# Serve only the private management subnet so infrastructure devices without
-# Internet routing can use two independently synchronized internal sources.
-allow {{ tlb_management_cidr }}
+# Serve only explicitly approved management networks.
+{% for cidr in tlb_ntp_allowed_cidrs %}allow {{ cidr }}{{ '\n' }}{% endfor %}
 
 {% if ansible_os_family == 'RedHat' %}
 keyfile /etc/chrony.keys

@@ -1,0 +1,2 @@
+---
+- import_playbook: pnetlab_read_only.yml

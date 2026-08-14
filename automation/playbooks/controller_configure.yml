@@ -35,6 +35,7 @@
             'inventories': controller_inventories,
             'hosts': controller_hosts,
             'groups': controller_groups,
+            'credential_types': controller_credential_types,
             'credentials': controller_credentials,
             'execution_environments': controller_execution_environments,
             'projects': controller_projects,

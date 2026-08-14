@@ -1,0 +1,14 @@
+---
+- name: Validate Community Ansible inventory structure
+  hosts: mbj_community_control
+  gather_facts: false
+  tasks:
+    - ansible.builtin.command:
+        argv:
+          - /opt/automation/runtime/venv/bin/ansible-inventory
+          - -i
+          - /opt/automation/repos/techlittlebrawta-lab/automation/inventories/pnetlab/hosts.yml
+          - --graph
+      register: inventory_graph
+      changed_when: false
+      failed_when: "'@pnetlab:' not in inventory_graph.stdout"

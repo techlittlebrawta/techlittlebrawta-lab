@@ -1,0 +1,1 @@
+tlb-automation ALL=(root) NOPASSWD: /usr/local/sbin/tlb-pnetlab-power-on-all

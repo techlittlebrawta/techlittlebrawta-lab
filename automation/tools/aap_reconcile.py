@@ -10,9 +10,12 @@ or gateway role assignments.
 
 from __future__ import annotations
 
+import argparse
 import json
+import getpass
 import os
 import sys
+import time
 from typing import Any
 
 import requests
@@ -22,13 +25,20 @@ import yaml
 class Controller:
     def __init__(self) -> None:
         self.host = os.environ["CONTROLLER_HOST"].rstrip("/")
-        token = os.environ["CONTROLLER_OAUTH_TOKEN"]
         verify_value = os.getenv("AAP_VALIDATE_CERTS", "true").lower()
         self.verify: bool | str = verify_value not in {"0", "false", "no"}
         self.session = requests.Session()
-        self.session.headers.update(
-            {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-        )
+        token = os.getenv("CONTROLLER_OAUTH_TOKEN")
+        if token:
+            self.session.headers.update({"Authorization": f"Bearer {token}"})
+        elif os.getenv("CONTROLLER_BASIC_USER"):
+            self.session.auth = (
+                os.environ["CONTROLLER_BASIC_USER"],
+                getpass.getpass("AAP password: "),
+            )
+        else:
+            raise RuntimeError("Controller bearer token or prompted basic user is required")
+        self.session.headers.update({"Accept": "application/json"})
         self.changed: list[str] = []
 
     def url(self, path: str) -> str:
@@ -39,9 +49,9 @@ class Controller:
             method, self.url(path), timeout=60, verify=self.verify, **kwargs
         )
         if not response.ok:
-            detail = response.text[:1000].replace(
-                os.environ["CONTROLLER_OAUTH_TOKEN"], "***"
-            )
+            detail = response.text[:1000]
+            if os.getenv("CONTROLLER_OAUTH_TOKEN"):
+                detail = detail.replace(os.environ["CONTROLLER_OAUTH_TOKEN"], "***")
             raise RuntimeError(
                 f"{method} {path} returned HTTP {response.status_code}: {detail}"
             )
@@ -181,10 +191,22 @@ def reconcile(data: dict[str, Any]) -> Controller:
             group["related"]["hosts"], desired, f"group-hosts:{item['name']}"
         )
 
+    for item in data.get("credential_types", []):
+        api.ensure(
+            "credential_types",
+            item["name"],
+            {
+                "description": item.get("description", ""),
+                "kind": item.get("kind", "cloud"),
+                "inputs": item.get("inputs", {}),
+                "injectors": item.get("injectors", {}),
+            },
+        )
+
     for item in data["credentials"]:
         org = organization_id(api, item["organization"])
         credential_type = api.one("credential_types", item["credential_type"])["id"]
-        api.ensure(
+        credential = api.ensure(
             "credentials",
             item["name"],
             {
@@ -194,8 +216,18 @@ def reconcile(data: dict[str, Any]) -> Controller:
             },
             {"organization": org},
         )
+        input_values = dict(item.get("inputs", {}))
+        input_files_available = False
+        for field, environment_name in item.get("input_files", {}).items():
+            path = os.getenv(environment_name)
+            if path:
+                input_values[field] = open(path, encoding="utf-8").read()
+                input_files_available = True
+        if input_values and (input_files_available or not credential.get("inputs")):
+            api.request("PATCH", credential["url"], json={"inputs": input_values})
+            api.changed.append(f"updated credential-inputs:{item['name']}")
 
-    for item in data["execution_environments"]:
+    for item in data.get("execution_environments", []):
         org = (
             organization_id(api, item["organization"])
             if item.get("organization")
@@ -212,12 +244,13 @@ def reconcile(data: dict[str, Any]) -> Controller:
             },
         )
 
+    projects_to_update: list[dict[str, Any]] = []
     for item in data["projects"]:
         org = organization_id(api, item["organization"])
         environment = api.one(
             "execution_environments", item["default_environment"]
         )["id"]
-        api.ensure(
+        project = api.ensure(
             "projects",
             item["name"],
             {
@@ -235,6 +268,17 @@ def reconcile(data: dict[str, Any]) -> Controller:
             },
             {"organization": org},
         )
+        if item.get("update_project"):
+            projects_to_update.append(project)
+
+    for project in projects_to_update:
+        update = api.request("POST", project["related"]["update"], json={})
+        while update.get("status") not in {"successful", "failed", "error", "canceled"}:
+            time.sleep(2)
+            update = api.request("GET", update["url"])
+        if update.get("status") != "successful":
+            raise RuntimeError(f"Project update for {project['name']} ended {update.get('status')}")
+        api.changed.append(f"updated project:{project['name']}")
 
     for item in data["templates"]:
         org = organization_id(api, item["organization"])
@@ -359,7 +403,14 @@ def reconcile(data: dict[str, Any]) -> Controller:
 
 
 def main() -> int:
-    data = json.load(sys.stdin)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", help="YAML or JSON desired-state file; defaults to JSON on stdin")
+    args = parser.parse_args()
+    if args.config:
+        with open(args.config, encoding="utf-8") as source:
+            data = yaml.safe_load(source)
+    else:
+        data = json.load(sys.stdin)
     api = reconcile(data)
     print(json.dumps({"changed": bool(api.changed), "actions": api.changed}, indent=2))
     return 0

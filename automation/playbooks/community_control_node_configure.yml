@@ -1,0 +1,13 @@
+---
+- name: Enforce MBJ Community Ansible desired state
+  hosts: mbj_community_control
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Invoke the fixed root-owned configuration interface
+      ansible.builtin.command:
+        argv: [/usr/bin/sudo, /usr/local/sbin/mbj-control-maintenance, configure]
+      register: configure_result
+      changed_when: "'Already up to date.' not in configure_result.stdout"
+
+- import_playbook: community_control_node_health.yml

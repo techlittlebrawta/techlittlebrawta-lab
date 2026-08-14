@@ -1,0 +1,54 @@
+---
+- name: Validate MBJ Community Ansible control node health
+  hosts: mbj_community_control
+  gather_facts: true
+  become: false
+  tasks:
+    - name: Require the implemented host identity and network
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.hostname == 'MBJ-PRD-ANSIBLE001'
+          - ansible_facts.distribution == 'RedHat'
+          - ansible_facts.distribution_major_version == '10'
+          - ansible_facts.selinux.status == 'enabled'
+          - ansible_facts.selinux.mode == 'enforcing'
+
+    - name: Collect required component versions
+      ansible.builtin.command:
+        argv: ["{{ item }}", --version]
+      loop:
+        - /opt/automation/runtime/venv/bin/ansible
+        - /usr/bin/git
+        - /usr/bin/python3
+      changed_when: false
+
+    - name: Validate required services
+      ansible.builtin.command:
+        argv: [/usr/bin/systemctl, is-active, "{{ item }}"]
+      loop: [sshd, firewalld, chronyd, rsyslog]
+      changed_when: false
+
+    - name: Validate repository revision and cleanliness
+      ansible.builtin.command:
+        argv: [/usr/bin/git, -C, /opt/automation/repos/techlittlebrawta-lab, status, --porcelain]
+      register: repository_status
+      changed_when: false
+      failed_when: repository_status.stdout | length > 0
+
+    - name: Validate persistent network addresses
+      ansible.builtin.command:
+        argv: [/usr/sbin/ip, -4, -brief, address]
+      register: addresses
+      changed_when: false
+      failed_when: "'192.168.1.250/24' not in addresses.stdout or '10.255.255.125/24' not in addresses.stdout"
+
+    - name: Validate AAP API with the installed internal CA
+      ansible.builtin.uri:
+        url: https://lab-aap-cont-01.lab.example.com/api/controller/v2/ping/
+        validate_certs: true
+        status_code: 200
+
+    - name: Validate GitHub source access
+      ansible.builtin.command:
+        argv: [/usr/bin/git, -C, /opt/automation/repos/techlittlebrawta-lab, ls-remote, --exit-code, origin, HEAD]
+      changed_when: false

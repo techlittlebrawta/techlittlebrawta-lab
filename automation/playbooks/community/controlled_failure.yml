@@ -1,0 +1,15 @@
+---
+- name: Controlled failure-propagation acceptance test
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Fail only when explicitly requested by the approved runner
+      ansible.builtin.fail:
+        msg: Controlled Community Ansible failure for AAP propagation validation.
+      when: expected_failure | default(false) | bool
+
+    - name: Reject accidental successful use of the failure playbook
+      ansible.builtin.assert:
+        that: expected_failure | default(false) | bool
+        fail_msg: The controlled failure playbook requires expected_failure=true.

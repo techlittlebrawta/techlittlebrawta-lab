@@ -1,0 +1,169 @@
+---
+inventories:
+  - name: TLB | MBJ Community Ansible
+    organization: Tech Little Brawta
+    description: AAP directly manages only the MBJ Community Ansible control plane for the PNETLab estate.
+    variables:
+      ansible_user: ansible
+      ansible_python_interpreter: /usr/bin/python3
+
+hosts:
+  - name: MBJ-PRD-ANSIBLE001
+    inventory: TLB | MBJ Community Ansible
+    variables:
+      ansible_host: 192.168.1.250
+      tlb_pnetlab_address: 10.255.255.125
+      tlb_role: community_ansible_control
+
+groups:
+  - name: mbj_community_control
+    inventory: TLB | MBJ Community Ansible
+    hosts: [MBJ-PRD-ANSIBLE001]
+
+credential_types:
+  - name: TLB Community Downstream Secret
+    description: Encrypted common downstream credential exposed only to approved Community runner jobs.
+    kind: cloud
+    inputs:
+      fields:
+        - id: tlb_lab_username
+          label: Downstream username
+          type: string
+        - id: tlb_lab_password
+          label: Downstream password
+          type: string
+          secret: true
+      required: [tlb_lab_password]
+    injectors:
+      env:
+        TLB_LAB_USERNAME: "{{ tlb_lab_username }}"
+        TLB_LAB_PASSWORD: "{{ tlb_lab_password }}"
+
+credentials:
+  - name: TLB | MBJ Community Ansible SSH
+    organization: Tech Little Brawta
+    credential_type: Machine
+    description: Dedicated locked-password ansible identity for AAP management of MBJ-PRD-ANSIBLE001.
+    inputs:
+      username: ansible
+    input_files:
+      ssh_key_data: MBJ_AAP_SSH_KEY_FILE
+  - name: TLB | Community Downstream Secret
+    organization: Tech Little Brawta
+    credential_type: TLB Community Downstream Secret
+    description: Encrypted downstream value migrated inside AAP from the existing lab appliance credential.
+
+projects:
+  - name: TLB | MBJ Community Automation
+    organization: Tech Little Brawta
+    description: GitHub source of truth for AAP-to-Community orchestration.
+    scm_type: git
+    scm_url: https://github.com/techlittlebrawta/techlittlebrawta-lab.git
+    scm_branch: agent/complete-pnetlab-aap-management-local
+    scm_clean: true
+    scm_delete_on_update: false
+    scm_track_submodules: false
+    scm_update_on_launch: false
+    allow_override: false
+    default_environment: TLB | AAP 2.7 Lab EE
+    update_project: true
+
+templates:
+  - &base
+    name: MBJ Community Ansible - Configure
+    organization: Tech Little Brawta
+    project: TLB | MBJ Community Automation
+    playbook: automation/playbooks/community_control_node_configure.yml
+    inventory: TLB | MBJ Community Ansible
+    execution_environment: TLB | AAP 2.7 Lab EE
+    credentials: [TLB | MBJ Community Ansible SSH]
+    timeout: 3600
+  - <<: *base
+    name: MBJ Community Ansible - Health Check
+    playbook: automation/playbooks/community_control_node_health.yml
+    timeout: 600
+  - <<: *base
+    name: MBJ Community Ansible - Git Sync
+    playbook: automation/playbooks/community_git_sync.yml
+    timeout: 600
+  - <<: *base
+    name: MBJ Community Ansible - Dependency Validation
+    playbook: automation/playbooks/community_dependency_validate.yml
+    timeout: 900
+  - <<: *base
+    name: MBJ Community Ansible - Inventory Validation
+    playbook: automation/playbooks/community_inventory_validate.yml
+    timeout: 600
+  - <<: *base
+    name: MBJ Community Ansible - Run Playbook
+    playbook: automation/playbooks/community_run_playbook.yml
+    credentials: [TLB | MBJ Community Ansible SSH, TLB | Community Downstream Secret]
+    ask_variables_on_launch: true
+    timeout: 3600
+  - <<: *base
+    name: MBJ Community Ansible - PNETLab Connectivity
+    playbook: automation/playbooks/community_pnetlab_connectivity.yml
+    credentials: [TLB | MBJ Community Ansible SSH, TLB | Community Downstream Secret]
+    timeout: 3600
+  - <<: *base
+    name: MBJ Community Ansible - Platform Validation
+    playbook: automation/playbooks/community_platform_validate.yml
+    credentials: [TLB | MBJ Community Ansible SSH, TLB | Community Downstream Secret]
+    timeout: 3600
+  - <<: *base
+    name: MBJ Community Ansible - Collect Results
+    playbook: automation/playbooks/community_collect_results.yml
+    timeout: 600
+  - <<: *base
+    name: MBJ Community Ansible - Controlled Failure
+    playbook: automation/playbooks/community_controlled_failure.yml
+    credentials: [TLB | MBJ Community Ansible SSH, TLB | Community Downstream Secret]
+    timeout: 600
+  - <<: *base
+    name: MBJ Community Ansible - Credential Migration
+    playbook: automation/playbooks/community_credential_migrate.yml
+    inventory: TLB Localhost
+    credentials: [TLB | Lab Appliance Automation, TLB | AAP Controller API, TLB | AAP Controller CA]
+    timeout: 300
+
+workflows:
+  - name: MBJ Community Ansible - Operational Workflow
+    organization: Tech Little Brawta
+    description: Health, Git, dependency, inventory, connectivity, platform, approved execution, and result validation with fail-closed edges.
+    allow_simultaneous: false
+    workflow_nodes:
+      - identifier: health
+        unified_job_template: MBJ Community Ansible - Health Check
+        success_nodes: [git_sync]
+      - identifier: git_sync
+        unified_job_template: MBJ Community Ansible - Git Sync
+        success_nodes: [dependencies]
+      - identifier: dependencies
+        unified_job_template: MBJ Community Ansible - Dependency Validation
+        success_nodes: [inventory]
+      - identifier: inventory
+        unified_job_template: MBJ Community Ansible - Inventory Validation
+        success_nodes: [connectivity]
+      - identifier: connectivity
+        unified_job_template: MBJ Community Ansible - PNETLab Connectivity
+        success_nodes: [platforms]
+      - identifier: platforms
+        unified_job_template: MBJ Community Ansible - Platform Validation
+        success_nodes: [approved_playbook]
+      - identifier: approved_playbook
+        unified_job_template: MBJ Community Ansible - Run Playbook
+        success_nodes: [collect]
+      - identifier: collect
+        unified_job_template: MBJ Community Ansible - Collect Results
+
+schedules:
+  - name: MBJ Community Ansible - Health Check - Every 6 Hours
+    description: Continuous health validation of the Community control plane.
+    unified_job_template: MBJ Community Ansible - Health Check
+    rrule: DTSTART:20260814T000000Z RRULE:FREQ=HOURLY;INTERVAL=6
+    enabled: true
+  - name: MBJ Community Ansible - Git Sync - Hourly
+    description: Fast-forward the Community source-of-truth checkout.
+    unified_job_template: MBJ Community Ansible - Git Sync
+    rrule: DTSTART:20260814T000000Z RRULE:FREQ=HOURLY;INTERVAL=1
+    enabled: true

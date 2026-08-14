@@ -15,12 +15,14 @@ AAP credentials and are not embedded in the repository copy.
 - The isolated management network is `pnet9` (`10.255.255.0/24`) and is hidden
   from the presentation topology.
 
-## AAP management path
+## Automation management paths
 
-AAP at `192.168.1.251` never assigns lab appliances addresses on the private
-LAN. It reaches PNETLab at `192.168.1.252`, which proxies SSH, HTTPS, and WinRM
-to isolated OOB reservations. Every node also has a PNETLab-console fallback,
-so first-boot and devices without a ready management service remain manageable.
+AAP at `192.168.1.251` directly manages only the Community control node at
+`192.168.1.250`. `MBJ-PRD-ANSIBLE001` has a second interface at
+`10.255.255.125` on `pnet9` and directly manages all 51 downstream nodes by
+their isolated OOB reservations. PNETLab at `192.168.1.252` retains its console
+fallback for first boot and repair, but its legacy proxy listeners are no longer
+the normal AAP management path.
 
 | Service | PNETLab listener | Isolated target |
 |---|---:|---:|
@@ -28,4 +30,5 @@ so first-boot and devices without a ready management service remain manageable.
 | HTTPS | `32000 + node ID` | `10.255.255.(100 + node ID):443` |
 | WinRM | `33000 + node ID` | `10.255.255.(100 + node ID):5986` |
 
-Only AAP is permitted to use these listeners.
+These legacy listeners are retained only for controlled recovery and are not
+represented by hosts or inventory sources in AAP.

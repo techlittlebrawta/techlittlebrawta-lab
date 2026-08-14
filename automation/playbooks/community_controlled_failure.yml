@@ -1,0 +1,11 @@
+---
+- name: Validate Community failure propagation
+  hosts: mbj_community_control
+  gather_facts: false
+  vars:
+    runner_playbook: controlled_failure
+    runner_limit: localhost
+    runner_extra_vars:
+      expected_failure: true
+  tasks:
+    - import_tasks: tasks/community_runner_request.yml

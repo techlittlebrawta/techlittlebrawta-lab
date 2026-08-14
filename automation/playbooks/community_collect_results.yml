@@ -1,0 +1,25 @@
+---
+- name: Collect and validate the latest Community execution result
+  hosts: mbj_community_control
+  gather_facts: false
+  tasks:
+    - ansible.builtin.find:
+        paths: /opt/automation/artifacts
+        patterns: '*.json'
+        file_type: file
+      register: result_files
+    - ansible.builtin.assert:
+        that: result_files.matched | int > 0
+        fail_msg: No Community execution result is available.
+    - ansible.builtin.slurp:
+        src: "{{ (result_files.files | sort(attribute='mtime') | last).path }}"
+      register: latest_result
+    - ansible.builtin.set_fact:
+        community_result: "{{ latest_result.content | b64decode | from_json }}"
+    - ansible.builtin.assert:
+        that:
+          - community_result.return_code | int == 0
+          - community_result.failed | int == 0
+          - community_result.unreachable | int == 0
+    - ansible.builtin.debug:
+        var: community_result
