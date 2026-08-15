@@ -1,12 +1,35 @@
-#!/bin/bash
-set -euo pipefail
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
 
-lab_file='/opt/unetlab/labs/Tech Little Brawta Lab.unl'
-tenant='43'
-session='4'
+chdir('/opt/unetlab/html');
+require_once 'includes/init.php';
 
-/opt/unetlab/wrappers/unl_wrapper \
-  -a start \
-  -T "$tenant" \
-  -S "$session" \
-  -F "$lab_file"
+$labFile = '/opt/unetlab/labs/Tech Little Brawta Lab.unl';
+$lab = new Lab($labFile, 43, 4);
+$started = 0;
+$alreadyRunning = 0;
+$failures = [];
+
+foreach ($lab->getNodes() as $id => $node) {
+    if ($node->getStatus() === 2) {
+        $alreadyRunning++;
+        continue;
+    }
+    try {
+        $result = $node->start();
+        if ($result !== 0) {
+            $failures[] = "{$id}:return={$result}";
+            continue;
+        }
+        $started++;
+    } catch (Throwable $error) {
+        $failures[] = "{$id}:" . get_class($error);
+    }
+}
+
+echo "started={$started} already_running={$alreadyRunning} failures=" . count($failures) . PHP_EOL;
+if ($failures) {
+    fwrite(STDERR, "Failed nodes: " . implode(',', $failures) . PHP_EOL);
+    exit(1);
+}
