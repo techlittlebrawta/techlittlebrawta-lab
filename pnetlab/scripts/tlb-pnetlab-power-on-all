@@ -5,7 +5,8 @@ lab_file='/opt/unetlab/labs/Tech Little Brawta Lab.unl'
 tenant='43'
 session='4'
 
-/usr/bin/php -r '$x=simplexml_load_file($argv[1]);foreach($x->topology->nodes->node as $n)echo (int)$n["id"].PHP_EOL;' "$lab_file" |
-while IFS= read -r node_id; do
-  /opt/unetlab/wrappers/unl_wrapper -a start -T "$tenant" -S "$session" -F "$lab_file" -D "$node_id"
-done
+/opt/unetlab/wrappers/unl_wrapper \
+  -a start \
+  -T "$tenant" \
+  -S "$session" \
+  -F "$lab_file"

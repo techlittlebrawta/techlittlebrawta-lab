@@ -25,7 +25,7 @@
         argv:
           - /usr/bin/ssh-keyscan
           - -T
-          - '10'
+          - '2'
           - "{{ item.value.ansible_host }}"
       loop: >-
         {{ (installed_inventory.stdout | from_json)._meta.hostvars |
